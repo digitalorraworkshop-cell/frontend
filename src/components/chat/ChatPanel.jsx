@@ -259,7 +259,7 @@ const ChatPanel = () => {
                                         >
                                             <div className="relative">
                                                 <img
-                                                    src={conv.profilePicture ? (conv.profilePicture.startsWith('http') ? conv.profilePicture : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${conv.profilePicture}`) : `https://ui-avatars.com/api/?name=${conv.name}&background=6366f1&color=fff`}
+                                                    src={conv.profilePicture ? (conv.profilePicture.startsWith('http') ? conv.profilePicture : `${import.meta.env.VITE_API_URL}${conv.profilePicture}`) : `https://ui-avatars.com/api/?name=${conv.name}&background=6366f1&color=fff`}
                                                     className="w-12 h-12 rounded-[18px] object-cover border-2 border-white shadow-sm"
                                                     alt=""
                                                 />

@@ -92,7 +92,7 @@ const BirthdayNotificationBanner = () => {
                         {todayBirthdays.slice(0, 3).map(emp => (
                             <div key={emp._id} className="flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2">
                                 {emp.profilePicture ? (
-                                    <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${emp.profilePicture}`} alt={emp.name} className="w-6 h-6 rounded-full object-cover" />
+                                    <img src={`${import.meta.env.VITE_API_URL}${emp.profilePicture}`} alt={emp.name} className="w-6 h-6 rounded-full object-cover" />
                                 ) : (
                                     <div className="w-6 h-6 rounded-full bg-white/30 flex items-center justify-center text-xs font-black">
                                         {emp.name.charAt(0)}

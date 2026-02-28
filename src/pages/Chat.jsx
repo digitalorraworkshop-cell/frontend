@@ -165,7 +165,7 @@ const Chat = () => {
                                 className={`p-4 flex items-center gap-4 cursor-pointer hover:bg-white transition-all border-l-4 ${selectedUser?._id === conv._id ? 'border-brand-500 bg-white shadow-sm' : 'border-transparent'}`}
                             >
                                 <div className="relative">
-                                    <img src={conv.profilePicture ? (conv.profilePicture.startsWith('http') ? conv.profilePicture : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${conv.profilePicture}`) : `https://ui-avatars.com/api/?name=${conv.name}`} className="w-12 h-12 rounded-2xl object-cover" alt="" />
+                                    <img src={conv.profilePicture ? (conv.profilePicture.startsWith('http') ? conv.profilePicture : `${import.meta.env.VITE_API_URL}${conv.profilePicture}`) : `https://ui-avatars.com/api/?name=${conv.name}`} className="w-12 h-12 rounded-2xl object-cover" alt="" />
                                     {!conv.isGroup && (
                                         <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${conv.isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
                                     )}

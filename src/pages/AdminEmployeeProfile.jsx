@@ -268,10 +268,10 @@ const AdminEmployeeProfile = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {screenshots.slice(0, 6).map((img, i) => (
                                 <div key={i} className="group relative aspect-video rounded-2xl overflow-hidden border border-slate-100 bg-slate-50">
-                                    <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${img.imageUrl}`} alt="Monitoring" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                    <img src={`${import.meta.env.VITE_API_URL}${img.imageUrl}`} alt="Monitoring" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                         <button
-                                            onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${img.imageUrl}`, '_blank')}
+                                            onClick={() => window.open(`${import.meta.env.VITE_API_URL}${img.imageUrl}`, '_blank')}
                                             className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white"
                                         >
                                             <Maximize size={16} />

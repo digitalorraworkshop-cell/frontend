@@ -201,7 +201,7 @@ const AdminBirthdays = () => {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {emp.profilePicture ? (
-                                                        <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${emp.profilePicture}`} alt={emp.name} className="w-10 h-10 rounded-xl object-cover" />
+                                                        <img src={`${import.meta.env.VITE_API_URL}${emp.profilePicture}`} alt={emp.name} className="w-10 h-10 rounded-xl object-cover" />
                                                     ) : (
                                                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400 to-pink-400 flex items-center justify-center text-white font-black">
                                                             {emp.name.charAt(0)}

@@ -107,7 +107,7 @@ const EmployeeLayout = () => {
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
                             <div className="h-10 w-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center border-2 border-white dark:border-slate-800 overflow-hidden shadow-sm">
                                 {user?.profilePicture ? (
-                                    <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
+                                    <img src={`${import.meta.env.VITE_API_URL}${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
                                 ) : (
                                     <User size={20} className="text-brand-600" />
                                 )}

@@ -229,7 +229,7 @@ const EmployeeList = () => {
                                             <div className="flex items-center">
                                                 <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                                     {emp.profilePicture ? (
-                                                        <img className="h-full w-full object-cover" src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${emp.profilePicture}`} alt="" />
+                                                        <img className="h-full w-full object-cover" src={`${import.meta.env.VITE_API_URL}${emp.profilePicture}`} alt="" />
                                                     ) : (
                                                         <span className="text-slate-500 font-bold text-sm">{emp.name?.charAt(0) || 'U'}</span>
                                                     )}
