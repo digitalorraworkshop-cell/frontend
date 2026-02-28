@@ -31,7 +31,7 @@ const EmployeeDashboard = () => {
                         </div>
                         <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
                             {user?.profilePicture ? (
-                                <img src={`http://localhost:5000${user.profilePicture}`} alt="Profile" className="h-full w-full object-cover" />
+                                <img src={`http://localhost:5001${user.profilePicture}`} alt="Profile" className="h-full w-full object-cover" />
                             ) : (
                                 <span className="font-bold text-slate-500">{user?.name?.charAt(0)}</span>
                             )}

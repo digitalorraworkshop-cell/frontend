@@ -21,6 +21,7 @@ const EmployeeList = () => {
         name: '',
         email: '',
         phone: '',
+        dateOfBirth: '',
         position: '',
         salary: '',
         department: ''
@@ -128,7 +129,7 @@ const EmployeeList = () => {
             });
 
             // Reset form for next time
-            setFormData({ name: '', email: '', phone: '', position: '', salary: '', department: '' });
+            setFormData({ name: '', email: '', phone: '', dateOfBirth: '', position: '', salary: '', department: '' });
             setProfilePic(null);
 
         } catch (error) {
@@ -209,11 +210,11 @@ const EmployeeList = () => {
                 </div>
 
                 {/* Table */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto custom-scrollbar">
                     <table className="w-full">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                {['Employee', 'Role', 'Department', 'Contact', 'Status', 'Actions'].map((header) => (
+                                {['Employee', 'Role', 'Department', 'Contact', 'Birthday', 'Status', 'Actions'].map((header) => (
                                     <th key={header} className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                         {header}
                                     </th>
@@ -228,7 +229,7 @@ const EmployeeList = () => {
                                             <div className="flex items-center">
                                                 <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                                     {emp.profilePicture ? (
-                                                        <img className="h-full w-full object-cover" src={`http://localhost:5000${emp.profilePicture}`} alt="" />
+                                                        <img className="h-full w-full object-cover" src={`http://localhost:5001${emp.profilePicture}`} alt="" />
                                                     ) : (
                                                         <span className="text-slate-500 font-bold text-sm">{emp.name?.charAt(0) || 'U'}</span>
                                                     )}
@@ -257,6 +258,12 @@ const EmployeeList = () => {
                                                         <Phone size={12} className="mr-1.5" /> {emp.phone}
                                                     </div>
                                                 )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                            <div className="flex items-center gap-1.5">
+                                                <span>🎂</span>
+                                                {emp.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString() : 'N/A'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -344,6 +351,10 @@ const EmployeeList = () => {
                                     <div className="col-span-2 md:col-span-1">
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
                                         <input name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">📅 Date of Birth</label>
+                                        <input name="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" />
                                     </div>
                                     <div className="col-span-2 md:col-span-1">
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Position</label>

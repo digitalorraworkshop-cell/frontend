@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, ClipboardList, LogOut, ShieldCheck, Activity, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, ClipboardList, LogOut, ShieldCheck, Activity, MessageSquare, Cake } from 'lucide-react';
 import AuthContext from '../../context/AuthContext';
 
 const Sidebar = () => {
@@ -21,14 +21,17 @@ const Sidebar = () => {
         { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} /> },
         { path: '/admin/attendance', name: 'Attendance', icon: <ClipboardList size={20} /> },
         { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} /> },
+        { path: '/admin/learning-reports', name: 'Learning Logs', icon: <FileText size={20} /> },
         { path: '/admin/activity-monitoring', name: 'Screenshots', icon: <Activity size={20} /> },
         { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} /> },
+        { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
     ] : [
         { path: '/employee/dashboard', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
         { path: '/employee/tasks', name: 'My Tasks', icon: <ClipboardList size={20} /> },
         { path: '/employee/attendance', name: 'Attendance', icon: <Activity size={20} /> },
         { path: '/employee/chat', name: 'Messages', icon: <MessageSquare size={20} /> },
         { path: '/employee/profile', name: 'Profile', icon: <Users size={20} /> },
+        { path: '/employee/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
     ];
 
     return (
@@ -74,7 +77,7 @@ const Sidebar = () => {
                 <div className="flex items-center gap-3 mb-4 px-2">
                     <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 font-bold overflow-hidden">
                         {user?.profilePicture ? (
-                            <img src={`http://localhost:5000${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
+                            <img src={`http://localhost:5001${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
                         ) : (
                             user?.name?.charAt(0) || 'A'
                         )}

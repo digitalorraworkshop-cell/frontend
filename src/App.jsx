@@ -10,6 +10,7 @@ import EmployeeCredentials from './pages/EmployeeCredentials';
 import EmployeeLayout from './components/layout/EmployeeLayout';
 import EmployeeHome from './pages/EmployeeHome';
 import EmployeeTasks from './pages/EmployeeTasks';
+import EmployeeTodo from './pages/EmployeeTodo';
 import EmployeeLeave from './pages/EmployeeLeave';
 import EmployeeAttendance from './pages/EmployeeAttendance';
 import EmployeeProfile from './pages/EmployeeProfile';
@@ -19,9 +20,12 @@ import AdminTasks from './pages/AdminTasks';
 import AdminActivityMonitoring from './pages/AdminActivityMonitoring';
 import AdminEmployeeProfile from './pages/AdminEmployeeProfile';
 import AdminAttendance from './pages/AdminAttendance';
+import AdminLearningReports from './pages/AdminLearningReports';
 import Chat from './pages/Chat';
 import WorkDiary from './pages/WorkDiary';
 import DesktopChatWidget from './pages/DesktopChatWidget';
+import EmployeeBirthdays from './pages/EmployeeBirthdays';
+import AdminBirthdays from './pages/AdminBirthdays';
 import toast from 'react-hot-toast';
 
 function App() {
@@ -67,10 +71,12 @@ function App() {
             <Route path="tasks" element={<AdminTasks />} />
             <Route path="activity-monitoring" element={<AdminActivityMonitoring />} />
             <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="learning-reports" element={<AdminLearningReports />} />
             <Route path="employee/:id" element={<AdminEmployeeProfile />} />
             <Route path="work-diary/:id" element={<WorkDiary />} />
             <Route path="employee-credentials/:id" element={<EmployeeCredentials />} />
             <Route path="chat" element={<Chat />} />
+            <Route path="birthdays" element={<AdminBirthdays />} />
           </Route>
 
           <Route path="/employee" element={
@@ -81,11 +87,13 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<EmployeeHome />} />
             <Route path="tasks" element={<EmployeeTasks />} />
+            <Route path="todo" element={<EmployeeTodo />} />
             <Route path="attendance" element={<EmployeeAttendance />} />
             <Route path="apply-leave" element={<EmployeeLeave />} />
             <Route path="leaves" element={<EmployeeLeave />} />
             <Route path="profile" element={<EmployeeProfile />} />
             <Route path="chat" element={<Chat />} />
+            <Route path="birthdays" element={<EmployeeBirthdays />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

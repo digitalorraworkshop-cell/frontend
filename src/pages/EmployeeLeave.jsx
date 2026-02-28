@@ -26,6 +26,7 @@ const EmployeeLeave = () => {
         shortLeaveUsedThisMonth: 0
     });
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('apply'); // 'apply' or 'record'
     const [previewDeduction, setPreviewDeduction] = useState(0);
     const [formData, setFormData] = useState({
         leaveType: 'Paid Leave',
@@ -130,144 +131,182 @@ const EmployeeLeave = () => {
     );
 
     return (
-        <div className="p-8 space-y-10 max-w-[1600px] mx-auto">
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
             {/* Header / Stats Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Paid Balance" value={stats.monthlyPaidLeaveBalance + stats.carryForwardLeave} icon={Wallet} color="emerald" />
-                <StatCard title="Instant (Year)" value={`${stats.instantLeaveUsedThisYear}/6`} icon={AlertTriangle} color="amber" />
-                <StatCard title="Short (Month)" value={`${stats.shortLeaveUsedThisMonth}/1`} icon={Clock} color="blue" />
-                <StatCard title="Carry Forward" value={stats.carryForwardLeave} icon={History} color="indigo" />
+            <div className="bg-white border-b border-slate-200/60 sticky top-0 z-20 px-8 py-5 backdrop-blur-md">
+                <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30">
+                            <CalendarPlus size={24} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-900">Leave Management</h1>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Balance & Applications</p>
+                        </div>
+                    </div>
+
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1 shadow-inner border border-slate-200/50">
+                        <button
+                            onClick={() => setActiveTab('apply')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'apply'
+                                ? 'bg-white text-brand-600 shadow-md ring-1 ring-slate-200'
+                                : 'text-slate-500 hover:bg-white/50'
+                                }`}
+                        >
+                            <CalendarPlus size={14} /> Apply Leave
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('record')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${activeTab === 'record'
+                                ? 'bg-white text-brand-600 shadow-md ring-1 ring-slate-200'
+                                : 'text-slate-500 hover:bg-white/50'
+                                }`}
+                        >
+                            <History size={14} /> Leave Record
+                            {leaves.length > 0 && (
+                                <span className="bg-brand-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]">
+                                    {leaves.length}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-                {/* Application Form */}
-                <div className="xl:col-span-1">
-                    <div className="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-50 p-10 sticky top-28">
-                        <div className="flex items-center gap-4 mb-10">
-                            <div className="p-3 bg-brand-50 rounded-2xl text-brand-600">
-                                <CalendarPlus size={28} />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Apply Leave</h2>
-                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Strict Policy Engine</p>
-                            </div>
-                        </div>
+            <main className="max-w-[1600px] mx-auto px-8 py-10 space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard title="Paid Balance" value={stats.monthlyPaidLeaveBalance + stats.carryForwardLeave} icon={Wallet} color="emerald" />
+                    <StatCard title="Instant (Year)" value={`${stats.instantLeaveUsedThisYear}/6`} icon={AlertTriangle} color="amber" />
+                    <StatCard title="Short (Month)" value={`${stats.shortLeaveUsedThisMonth}/1`} icon={Clock} color="blue" />
+                    <StatCard title="Carry Forward" value={stats.carryForwardLeave} icon={History} color="indigo" />
+                </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-8">
-                            <div className="space-y-6">
+                {activeTab === 'apply' ? (
+                    <div className="max-w-3xl mx-auto w-full">
+                        <div className="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-50 p-10">
+                            <div className="flex items-center gap-4 mb-10">
+                                <div className="p-3 bg-brand-50 rounded-2xl text-brand-600">
+                                    <Send size={28} />
+                                </div>
                                 <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Leave Type</label>
-                                    <select
-                                        className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold transition-all"
-                                        value={formData.leaveType}
-                                        onChange={(e) => setFormData({ ...formData, leaveType: e.target.value })}
-                                    >
-                                        <option>Paid Leave</option>
-                                        <option>Instant Leave</option>
-                                        <option>Short Leave</option>
-                                        <option>Regular Leave (Unpaid)</option>
-                                    </select>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">New Application</h2>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Fill in the details below</p>
                                 </div>
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleSubmit} className="space-y-8">
+                                <div className="space-y-6">
                                     <div>
-                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">From Date</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold"
-                                            value={formData.fromDate}
-                                            onChange={(e) => setFormData({ ...formData, fromDate: e.target.value })}
-                                        />
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Leave Type</label>
+                                        <select
+                                            className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold transition-all"
+                                            value={formData.leaveType}
+                                            onChange={(e) => setFormData({ ...formData, leaveType: e.target.value })}
+                                        >
+                                            <option>Paid Leave</option>
+                                            <option>Instant Leave</option>
+                                            <option>Short Leave</option>
+                                            <option>Regular Leave (Unpaid)</option>
+                                        </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">To Date</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold"
-                                            value={formData.toDate}
-                                            onChange={(e) => setFormData({ ...formData, toDate: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="flex gap-4">
-                                    <label className="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer hover:bg-white transition-all flex items-center gap-3">
-                                        <input type="checkbox" className="w-5 h-5 rounded-lg border-slate-200 text-brand-600 focus:ring-brand-500" checked={formData.isEmergency} onChange={e => setFormData({ ...formData, isEmergency: e.target.checked })} />
-                                        <span className="text-xs font-black text-slate-600 uppercase tracking-tighter">Emergency</span>
-                                    </label>
-                                    <label className="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer hover:bg-white transition-all flex items-center gap-3">
-                                        <input type="checkbox" className="w-5 h-5 rounded-lg border-slate-200 text-brand-600 focus:ring-brand-500" checked={formData.isSickness} onChange={e => setFormData({ ...formData, isSickness: e.target.checked })} />
-                                        <span className="text-xs font-black text-slate-600 uppercase tracking-tighter">Sickness</span>
-                                    </label>
-                                </div>
-
-                                {formData.isSickness && (
-                                    <div className="p-1">
-                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Proof Document (If &gt; 1 day)</label>
-                                        <div className="relative group">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">From Date</label>
                                             <input
-                                                type="file"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                onChange={(e) => setFormData({ ...formData, proofDocument: e.target.files[0] })}
+                                                type="date"
+                                                required
+                                                className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold"
+                                                value={formData.fromDate}
+                                                onChange={(e) => setFormData({ ...formData, fromDate: e.target.value })}
                                             />
-                                            <div className="w-full p-4 rounded-2xl border-2 border-dashed border-slate-200 group-hover:border-brand-300 transition-colors flex items-center justify-center gap-2 bg-slate-50/50">
-                                                <UploadCloud className="text-slate-400 group-hover:text-brand-500 transition-colors" size={20} />
-                                                <span className="text-xs font-bold text-slate-500 truncate">
-                                                    {formData.proofDocument ? formData.proofDocument.name : "Select medical certificate"}
-                                                </span>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">To Date</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold"
+                                                value={formData.toDate}
+                                                onChange={(e) => setFormData({ ...formData, toDate: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <label className="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer hover:bg-white transition-all flex items-center gap-3">
+                                            <input type="checkbox" className="w-5 h-5 rounded-lg border-slate-200 text-brand-600 focus:ring-brand-500" checked={formData.isEmergency} onChange={e => setFormData({ ...formData, isEmergency: e.target.checked })} />
+                                            <span className="text-xs font-black text-slate-600 uppercase tracking-tighter">Emergency</span>
+                                        </label>
+                                        <label className="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer hover:bg-white transition-all flex items-center gap-3">
+                                            <input type="checkbox" className="w-5 h-5 rounded-lg border-slate-200 text-brand-600 focus:ring-brand-500" checked={formData.isSickness} onChange={e => setFormData({ ...formData, isSickness: e.target.checked })} />
+                                            <span className="text-xs font-black text-slate-600 uppercase tracking-tighter">Sickness</span>
+                                        </label>
+                                    </div>
+
+                                    {formData.isSickness && (
+                                        <div className="p-1">
+                                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Proof Document (If &gt; 1 day)</label>
+                                            <div className="relative group">
+                                                <input
+                                                    type="file"
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                    onChange={(e) => setFormData({ ...formData, proofDocument: e.target.files[0] })}
+                                                />
+                                                <div className="w-full p-4 rounded-2xl border-2 border-dashed border-slate-200 group-hover:border-brand-300 transition-colors flex items-center justify-center gap-2 bg-slate-50/50">
+                                                    <UploadCloud className="text-slate-400 group-hover:text-brand-500 transition-colors" size={20} />
+                                                    <span className="text-xs font-bold text-slate-500 truncate">
+                                                        {formData.proofDocument ? formData.proofDocument.name : "Select medical certificate"}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Reason</label>
+                                        <textarea
+                                            rows="3"
+                                            required
+                                            className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold resize-none"
+                                            placeholder="Briefly explain your requirement..."
+                                            value={formData.reason}
+                                            onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                        ></textarea>
+                                    </div>
+                                </div>
+
+                                {previewDeduction > 0 && (
+                                    <div className="p-6 rounded-3xl bg-rose-50 border border-rose-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-3 text-rose-600">
+                                            <AlertTriangle size={20} />
+                                            <span className="text-xs font-black uppercase tracking-tight">Salary Deduction</span>
+                                        </div>
+                                        <span className="text-xl font-black text-rose-600">₹{previewDeduction.toFixed(2)}</span>
                                     </div>
                                 )}
 
-                                <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Reason</label>
-                                    <textarea
-                                        rows="3"
-                                        required
-                                        className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 text-sm font-bold resize-none"
-                                        placeholder="Briefly explain your requirement..."
-                                        value={formData.reason}
-                                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            {previewDeduction > 0 && (
-                                <div className="p-6 rounded-3xl bg-rose-50 border border-rose-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-3 text-rose-600">
-                                        <AlertTriangle size={20} />
-                                        <span className="text-xs font-black uppercase tracking-tight">Salary Deduction</span>
-                                    </div>
-                                    <span className="text-xl font-black text-rose-600">₹{previewDeduction.toFixed(2)}</span>
-                                </div>
-                            )}
-
-                            <button
-                                type="submit"
-                                className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-brand-700 hover:-translate-y-1 active:translate-y-0 transition-all shadow-xl shadow-brand-600/30"
-                            >
-                                <Send size={20} />
-                                Submit Application
-                            </button>
-                        </form>
+                                <button
+                                    type="submit"
+                                    className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-brand-700 hover:-translate-y-1 active:translate-y-0 transition-all shadow-xl shadow-brand-600/30"
+                                >
+                                    <Send size={20} />
+                                    Submit Application
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-
-                {/* History Section */}
-                <div className="xl:col-span-2 space-y-6">
+                ) : (
                     <div className="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-50 overflow-hidden">
                         <div className="p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-slate-900 rounded-2xl text-white">
                                     <FileText size={24} />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Request History</h3>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Leave Record</h3>
                             </div>
                             <span className="px-4 py-1.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                {leaves.length} Applications
+                                {leaves.length} Footprints Found
                             </span>
                         </div>
 
@@ -277,7 +316,7 @@ const EmployeeLeave = () => {
                                     {loading ? (
                                         <tr><td className="p-20 text-center"><p className="text-slate-400 font-bold animate-pulse">Synchronizing records...</p></td></tr>
                                     ) : leaves.length === 0 ? (
-                                        <tr><td className="p-20 text-center"><p className="text-slate-300 font-bold italic">No leave footprint found</p></td></tr>
+                                        <tr><td className="p-20 text-center"><p className="text-slate-300 font-bold italic">No leave record found</p></td></tr>
                                     ) : (
                                         leaves.map((l) => (
                                             <tr key={l._id} className="group hover:bg-slate-50/50 transition-all">
@@ -331,8 +370,8 @@ const EmployeeLeave = () => {
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
+                )}
+            </main>
         </div>
     );
 };

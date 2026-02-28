@@ -15,10 +15,12 @@ import {
     Bell,
     Settings,
     Moon,
-    Sun
+    Sun,
+    Cake
 } from 'lucide-react';
 import ChatPanel from '../chat/ChatPanel';
 import useInactivity from '../../hooks/useInactivity';
+import BirthdayNotificationBanner from '../common/BirthdayNotificationBanner';
 
 const EmployeeLayout = () => {
     const { user, logout } = useContext(AuthContext);
@@ -45,10 +47,11 @@ const EmployeeLayout = () => {
     const menuItems = [
         { path: '/employee/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
         { path: '/employee/tasks', icon: <ClipboardList size={20} />, label: 'My Tasks' },
+        { path: '/employee/todo', icon: <CalendarCheck size={20} />, label: 'Daily To-Do' },
         { path: '/employee/attendance', icon: <Clock size={20} />, label: 'Attendance' },
         { path: '/employee/apply-leave', icon: <CalendarPlus size={20} />, label: 'Apply Leave' },
-        { path: '/employee/leaves', icon: <CalendarCheck size={20} />, label: 'My Leaves' },
         { path: '/employee/profile', icon: <User size={20} />, label: 'Profile' },
+        { path: '/employee/birthdays', icon: <Cake size={20} />, label: 'Birthdays' },
     ];
 
     const isActive = (path) => location.pathname === path;
@@ -104,7 +107,7 @@ const EmployeeLayout = () => {
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50">
                             <div className="h-10 w-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center border-2 border-white dark:border-slate-800 overflow-hidden shadow-sm">
                                 {user?.profilePicture ? (
-                                    <img src={`http://localhost:5000${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
+                                    <img src={`http://localhost:5001${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
                                 ) : (
                                     <User size={20} className="text-brand-600" />
                                 )}
@@ -177,6 +180,7 @@ const EmployeeLayout = () => {
                     </p>
                 </footer>
             </div>
+            <BirthdayNotificationBanner />
         </div>
     );
 };

@@ -46,8 +46,15 @@ const AdminEmployeeProfile = () => {
     });
     const [screenshots, setScreenshots] = useState([]);
     const [attendance, setAttendance] = useState([]);
+    const [leaves, setLeaves] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentStatus, setCurrentStatus] = useState('Offline');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState({
+        email: '',
+        phone: '',
+        dateOfBirth: ''
+    });
 
     const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
@@ -77,15 +84,22 @@ const AdminEmployeeProfile = () => {
 
     const fetchEmployeeData = async () => {
         try {
-            const [empRes, screenshotsRes, attendanceRes] = await Promise.all([
+            const [empRes, screenshotsRes, attendanceRes, leavesRes] = await Promise.all([
                 api.get(`/employees/${id}`),
                 api.get(`/screenshots?userId=${id}`),
-                api.get(`/attendance/user/${id}`)
+                api.get(`/attendance/user/${id}`),
+                api.get(`/leaves?userId=${id}`)
             ]);
             setEmployee(empRes.data);
             setScreenshots(screenshotsRes.data);
             setAttendance(attendanceRes.data);
+            setLeaves(leavesRes.data);
             setCurrentStatus(empRes.data.currentStatus);
+            setEditData({
+                email: empRes.data.email || '',
+                phone: empRes.data.phone || '',
+                dateOfBirth: empRes.data.dateOfBirth ? empRes.data.dateOfBirth.split('T')[0] : ''
+            });
             fetchStats();
         } catch (error) {
             console.error('Failed to load employee details', error);
@@ -101,6 +115,17 @@ const AdminEmployeeProfile = () => {
             setStats(statsRes.data);
         } catch (error) {
             console.error('Failed to fetch stats');
+        }
+    };
+
+    const handleUpdatePersonal = async () => {
+        try {
+            const { data } = await api.put(`/employees/${id}`, editData);
+            setEmployee(data);
+            setIsEditing(false);
+            toast.success('Personal info updated');
+        } catch (error) {
+            toast.error('Failed to update personal info');
         }
     };
 
@@ -166,11 +191,56 @@ const AdminEmployeeProfile = () => {
                 {/* Left Column: Details & Breaks */}
                 <div className="lg:col-span-1 space-y-8">
                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
-                        <h3 className="text-lg font-bold text-slate-900 border-b border-slate-50 pb-4">Personal Info</h3>
+                        <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+                            <h3 className="text-lg font-bold text-slate-900">Personal Info</h3>
+                            {!isEditing ? (
+                                <button onClick={() => setIsEditing(true)} className="text-xs font-bold text-brand-600 hover:text-brand-700">Edit</button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button onClick={() => setIsEditing(false)} className="text-xs font-bold text-slate-400">Cancel</button>
+                                    <button onClick={handleUpdatePersonal} className="text-xs font-bold text-brand-600">Save</button>
+                                </div>
+                            )}
+                        </div>
                         <div className="space-y-4">
-                            <InfoRow icon={<Mail size={16} />} label="Email" value={employee?.email || 'N/A'} />
-                            <InfoRow icon={<Phone size={16} />} label="Phone" value={employee?.phone || 'N/A'} />
-                            <InfoRow icon={<Calendar size={16} />} label="Joined" value={employee?.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A'} />
+                            {isEditing ? (
+                                <>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Email</label>
+                                        <input
+                                            type="email"
+                                            value={editData.email}
+                                            onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Phone</label>
+                                        <input
+                                            type="text"
+                                            value={editData.phone}
+                                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Birthday</label>
+                                        <input
+                                            type="date"
+                                            value={editData.dateOfBirth}
+                                            onChange={(e) => setEditData({ ...editData, dateOfBirth: e.target.value })}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-brand-500"
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <InfoRow icon={<Mail size={16} />} label="Email" value={employee?.email || 'N/A'} />
+                                    <InfoRow icon={<Phone size={16} />} label="Phone" value={employee?.phone || 'N/A'} />
+                                    <InfoRow icon={<Calendar size={16} />} label="Joined" value={employee?.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A'} />
+                                    <InfoRow icon={<span>🎂</span>} label="Birthday" value={employee?.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString('en-US', { day: 'numeric', month: 'long' }) : 'Not set'} />
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -198,10 +268,10 @@ const AdminEmployeeProfile = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {screenshots.slice(0, 6).map((img, i) => (
                                 <div key={i} className="group relative aspect-video rounded-2xl overflow-hidden border border-slate-100 bg-slate-50">
-                                    <img src={`http://localhost:5000${img.imageUrl}`} alt="Monitoring" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                    <img src={`http://localhost:5001${img.imageUrl}`} alt="Monitoring" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                         <button
-                                            onClick={() => window.open(`http://localhost:5000${img.imageUrl}`, '_blank')}
+                                            onClick={() => window.open(`http://localhost:5001${img.imageUrl}`, '_blank')}
                                             className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white"
                                         >
                                             <Maximize size={16} />
@@ -219,12 +289,13 @@ const AdminEmployeeProfile = () => {
                     </div>
 
                     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="p-8 border-b border-slate-50">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-slate-900">Attendance History</h3>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{attendance.length} Records</span>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[300px] custom-scrollbar">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+                                <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 sticky top-0">
                                     <tr>
                                         <th className="px-8 py-4">Date</th>
                                         <th className="px-8 py-4">Check In</th>
@@ -234,22 +305,72 @@ const AdminEmployeeProfile = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {attendance.map((record, i) => (
-                                        <tr key={i} className="text-sm hover:bg-slate-50 transition-colors">
-                                            <td className="px-8 py-4 font-medium text-slate-700">{record.date}</td>
-                                            <td className="px-8 py-4 text-slate-500">{new Date(record.checkInTime).toLocaleTimeString()}</td>
-                                            <td className="px-8 py-4 text-slate-500">{record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : 'Running'}</td>
-                                            <td className="px-8 py-4 text-slate-700 font-bold">{record.formattedTotalHours || formatMins(record.totalMinutes)}</td>
-                                            <td className="px-8 py-4">
-                                                <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${record.status === 'Working' ? 'bg-amber-100 text-amber-700' :
-                                                    record.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                                        'bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    {record.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {attendance.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-8 py-10 text-center text-slate-400 italic">No attendance records found</td></tr>
+                                    ) : (
+                                        attendance.map((record, i) => (
+                                            <tr key={i} className="text-sm hover:bg-slate-50 transition-colors">
+                                                <td className="px-8 py-4 font-medium text-slate-700">{record.date}</td>
+                                                <td className="px-8 py-4 text-slate-500">{new Date(record.checkInTime).toLocaleTimeString()}</td>
+                                                <td className="px-8 py-4 text-slate-500">{record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString() : 'Running'}</td>
+                                                <td className="px-8 py-4 text-slate-700 font-bold">{record.formattedTotalHours || formatMins(record.totalMinutes)}</td>
+                                                <td className="px-8 py-4">
+                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${record.status === 'Working' ? 'bg-amber-100 text-amber-700' :
+                                                        record.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                        {record.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-900">Leave Record</h3>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{leaves.length} Records</span>
+                        </div>
+                        <div className="overflow-x-auto max-h-[300px] custom-scrollbar">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 sticky top-0">
+                                    <tr>
+                                        <th className="px-8 py-4">Type</th>
+                                        <th className="px-8 py-4">From - To</th>
+                                        <th className="px-8 py-4">Days</th>
+                                        <th className="px-8 py-4">Status</th>
+                                        <th className="px-8 py-4">Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {leaves.length === 0 ? (
+                                        <tr><td colSpan="5" className="px-8 py-10 text-center text-slate-400 italic">No leave records found</td></tr>
+                                    ) : (
+                                        leaves.map((l, i) => (
+                                            <tr key={i} className="text-sm hover:bg-slate-50 transition-colors">
+                                                <td className="px-8 py-4 font-medium text-slate-700">{l.leaveType}</td>
+                                                <td className="px-8 py-4 text-slate-500 text-xs">
+                                                    {new Date(l.fromDate).toLocaleDateString()} - {new Date(l.toDate).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-8 py-4 text-slate-700 font-bold text-xs">{l.totalDays}d</td>
+                                                <td className="px-8 py-4">
+                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${l.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                                        l.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                            'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                        {l.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-4 text-slate-500 max-w-xs truncate text-[10px]" title={l.reason}>
+                                                    {l.reason}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>

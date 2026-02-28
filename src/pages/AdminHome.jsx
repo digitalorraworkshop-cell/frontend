@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { Users, Clock, AlertCircle, TrendingUp, Activity, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Clock, AlertCircle, TrendingUp, Activity, CheckCircle, XCircle, Cake } from 'lucide-react';
 import AuthContext from '../context/AuthContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { getSocket } from '../utils/socket';
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast';
 
 const AdminHome = () => {
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         totalEmployees: 0,
         activeNow: 0,
@@ -18,15 +20,24 @@ const AdminHome = () => {
         onlineEmployees: 0
     });
     const [employees, setEmployees] = useState([]);
+    const [birthdays, setBirthdays] = useState([]);
     const [chartData, setChartData] = useState([]);
+    const [notebookStats, setNotebookStats] = useState({ total: 0, completed: 0 });
     const socketRef = useRef(null);
 
     const fetchDashboardData = async () => {
         try {
-            const [statsRes, employeesRes] = await Promise.all([
+            const todayStr = new Date().toISOString().split('T')[0];
+            const [statsRes, employeesRes, tasksRes, birthdaysRes] = await Promise.all([
                 api.get('/attendance/stats'),
-                api.get('/activity/live-status')
+                api.get('/activity/live-status'),
+                api.get(`/tasks?date=${todayStr}`),
+                api.get('/birthdays/upcoming?days=7')
             ]);
+
+            const todayTasks = tasksRes.data;
+            const completed = todayTasks.filter(t => t.status === 'Completed').length;
+            setNotebookStats({ total: todayTasks.length, completed });
 
             const s = statsRes.data;
             setStats({
@@ -39,8 +50,8 @@ const AdminHome = () => {
             });
 
             setEmployees(employeesRes.data || []);
+            setBirthdays(birthdaysRes.data || []);
 
-            // Generate mock trend data based on actual total hours
             setChartData([
                 { name: 'Mon', hours: 42 },
                 { name: 'Tue', hours: 38 },
@@ -127,7 +138,7 @@ const AdminHome = () => {
                     title="Total Work Hours"
                     value={stats.totalWorkHours || "00h 00m"}
                     icon={Clock}
-                    gradient="from-amber-500 to-orange-500"
+                    gradient="from-rose-500 to-pink-500"
                 />
             </div>
 
@@ -204,6 +215,43 @@ const AdminHome = () => {
                             <h4 className="text-xl font-black text-slate-900">{stats.todayAbsent} Absent Today</h4>
                             <p className="text-xs text-slate-400 font-bold uppercase mt-2">Requires Review</p>
                         </div>
+
+                        {/* Birthday Widget */}
+                        <div className="bg-white p-8 rounded-[40px] shadow-lg border border-slate-100 flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                    <Cake className="text-pink-500" size={20} />
+                                    Birthdays
+                                </h4>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Next 7 Days</span>
+                            </div>
+                            <div className="space-y-4 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                                {birthdays.length > 0 ? (
+                                    birthdays.map(b => (
+                                        <div key={b._id} className="flex items-center gap-3 p-2 bg-slate-50/50 rounded-2xl border border-slate-100/50">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-400 to-violet-400 flex items-center justify-center text-white text-xs font-black">
+                                                {b.name.charAt(0)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-black text-slate-900 truncate">{b.name}</p>
+                                                <p className="text-[10px] text-pink-500 font-bold">{b.isToday ? '🎉 Today!' : b.daysLeft === 1 ? 'Tomorrow' : `In ${b.daysLeft} days`}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-6 text-slate-300">
+                                        <Cake size={24} className="opacity-20 mb-2" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest">No upcoming</p>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => navigate('/admin/birthdays')}
+                                className="mt-4 w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                            >
+                                View Calendar
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -223,7 +271,7 @@ const AdminHome = () => {
                                     <div className="relative shrink-0">
                                         <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 p-1 flex items-center justify-center overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
                                             {emp.profilePicture ? (
-                                                <img src={`http://localhost:5000${emp.profilePicture}`} alt="" className="w-full h-full object-cover rounded-xl" />
+                                                <img src={`http://localhost:5001${emp.profilePicture}`} alt="" className="w-full h-full object-cover rounded-xl" />
                                             ) : (
                                                 <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold uppercase rounded-xl">
                                                     {emp.name.charAt(0)}

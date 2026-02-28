@@ -6,6 +6,7 @@ import { Bell, Search, Settings, HelpCircle } from 'lucide-react';
 import ChatPanel from '../chat/ChatPanel';
 import { initSocket, disconnectSocket } from '../../utils/socket';
 import { useEffect } from 'react';
+import BirthdayNotificationBanner from '../common/BirthdayNotificationBanner';
 
 const AdminLayout = () => {
     const { user } = useContext(AuthContext);
@@ -68,6 +69,7 @@ const AdminLayout = () => {
                 </main>
                 <ChatPanel />
             </div>
+            <BirthdayNotificationBanner />
         </div>
     );
 };

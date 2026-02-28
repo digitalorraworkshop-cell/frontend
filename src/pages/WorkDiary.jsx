@@ -58,10 +58,10 @@ const WorkDiary = () => {
                     {screenshots.map((shot, i) => (
                         <div key={i} className="group bg-white rounded-[40px] overflow-hidden shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500">
                             <div className="relative aspect-video overflow-hidden bg-slate-100">
-                                <img src={shot.imageUrl.startsWith('http') ? shot.imageUrl : `http://localhost:5000${shot.imageUrl}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                                <img src={shot.imageUrl.startsWith('http') ? shot.imageUrl : `http://localhost:5001${shot.imageUrl}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
                                     <button
-                                        onClick={() => window.open(shot.imageUrl.startsWith('http') ? shot.imageUrl : `http://localhost:5000${shot.imageUrl}`, '_blank')}
+                                        onClick={() => window.open(shot.imageUrl.startsWith('http') ? shot.imageUrl : `http://localhost:5001${shot.imageUrl}`, '_blank')}
                                         className="w-full py-3 bg-white/20 backdrop-blur-md text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-white/30 transition-colors flex items-center justify-center gap-2"
                                     >
                                         <ExternalLink size={14} /> Full View

@@ -119,7 +119,8 @@ const AdminTasks = () => {
         switch (status) {
             case 'Completed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
             case 'In Progress': return 'bg-blue-50 text-blue-600 border-blue-100';
-            default: return 'bg-amber-50 text-amber-600 border-amber-100';
+            case 'Not Completed': return 'bg-rose-50 text-rose-600 border-rose-100';
+            default: return 'bg-slate-50 text-slate-500 border-slate-100';
         }
     };
 
@@ -181,7 +182,7 @@ const AdminTasks = () => {
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Project Status</label>
                                 <div className="grid grid-cols-1 gap-2">
-                                    {['All', 'Pending', 'In Progress', 'Completed'].map(s => (
+                                    {['All', 'Pending', 'In Progress', 'Completed', 'Not Completed'].map(s => (
                                         <button
                                             key={s}
                                             onClick={() => setFilters({ ...filters, status: s === 'All' ? '' : s })}
@@ -275,18 +276,26 @@ const AdminTasks = () => {
                                                         <div className="relative">
                                                             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                                                 {task.assignedTo?.profilePicture ? (
-                                                                    <img src={`http://localhost:5000${task.assignedTo.profilePicture}`} alt="" className="w-full h-full object-cover" />
+                                                                    <img src={`http://localhost:5001${task.assignedTo.profilePicture}`} alt="" className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <User size={20} className="text-slate-400" />
                                                                 )}
                                                             </div>
                                                             <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${task.assignedTo?.currentStatus === 'Working' ? 'bg-emerald-500' :
-                                                                    task.assignedTo?.currentStatus === 'Online' ? 'bg-blue-500' :
-                                                                        'bg-slate-300'
+                                                                task.assignedTo?.currentStatus === 'Online' ? 'bg-blue-500' :
+                                                                    'bg-slate-300'
                                                                 }`}></div>
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="text-sm font-black text-slate-900 truncate leading-tight">{task.title}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-black text-slate-900 truncate leading-tight">{task.title}</p>
+                                                                {task.comments?.length > 0 && (
+                                                                    <div className="flex items-center gap-1 text-[9px] font-black text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded-md">
+                                                                        <MessageSquare size={10} />
+                                                                        {task.comments.length}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                             <p className="text-[10px] text-slate-400 font-bold truncate mt-0.5">{task.assignedTo?.name || 'Unassigned'}</p>
                                                         </div>
                                                     </div>
@@ -302,9 +311,17 @@ const AdminTasks = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-7">
-                                                    <div className="flex items-center gap-2 text-[11px] font-black text-slate-600">
-                                                        <Calendar size={14} className="text-slate-300" />
-                                                        {new Date(task.dueDate || task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2 text-[11px] font-black text-slate-600">
+                                                            <Calendar size={14} className="text-slate-300" />
+                                                            {new Date(task.dueDate || task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                        </div>
+                                                        {task.dueTime && (
+                                                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                                                                <Clock size={12} className="text-slate-200" />
+                                                                {task.dueTime}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-7">
