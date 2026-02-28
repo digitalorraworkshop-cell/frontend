@@ -77,7 +77,7 @@ const Sidebar = () => {
                 <div className="flex items-center gap-3 mb-4 px-2">
                     <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 font-bold overflow-hidden">
                         {user?.profilePicture ? (
-                            <img src={`http://localhost:5001${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
+                            <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
                         ) : (
                             user?.name?.charAt(0) || 'A'
                         )}

@@ -1,9 +1,9 @@
-import { io } from 'socket.io-client';
+import { API_URL } from './api';
 
 let socket;
 
 export const initSocket = (token) => {
-    socket = io('http://localhost:5001', {
+    socket = io(API_URL, {
         auth: { token }
     });
 

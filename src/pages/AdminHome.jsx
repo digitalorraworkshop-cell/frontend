@@ -271,7 +271,7 @@ const AdminHome = () => {
                                     <div className="relative shrink-0">
                                         <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 p-1 flex items-center justify-center overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
                                             {emp.profilePicture ? (
-                                                <img src={`http://localhost:5001${emp.profilePicture}`} alt="" className="w-full h-full object-cover rounded-xl" />
+                                                <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${emp.profilePicture}`} alt="" className="w-full h-full object-cover rounded-xl" />
                                             ) : (
                                                 <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold uppercase rounded-xl">
                                                     {emp.name.charAt(0)}

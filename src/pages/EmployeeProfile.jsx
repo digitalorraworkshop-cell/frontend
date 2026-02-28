@@ -28,7 +28,7 @@ const EmployeeProfile = () => {
                         <div className="h-32 w-32 rounded-3xl bg-white p-1.5 shadow-xl">
                             <div className="h-full w-full rounded-[1.25rem] bg-slate-100 border-2 border-white overflow-hidden flex items-center justify-center relative group">
                                 {user?.profilePicture ? (
-                                    <img src={`http://localhost:5001${user.profilePicture}`} className="h-full w-full object-cover" alt="Profile" />
+                                    <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${user.profilePicture}`} className="h-full w-full object-cover" alt="Profile" />
                                 ) : (
                                     <User size={48} className="text-slate-300" />
                                 )}

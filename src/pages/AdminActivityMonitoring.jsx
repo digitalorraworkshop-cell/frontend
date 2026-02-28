@@ -147,7 +147,7 @@ const AdminActivityMonitoring = () => {
                         <div key={shot._id} className="group bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300">
                             <div className="relative aspect-video overflow-hidden bg-slate-100">
                                 <img
-                                    src={shot.imageUrl.startsWith('http') ? shot.imageUrl : `http://localhost:5001${shot.imageUrl}`}
+                                    src={shot.imageUrl.startsWith('http') ? shot.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${shot.imageUrl}`}
                                     alt="Activity"
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
@@ -166,7 +166,7 @@ const AdminActivityMonitoring = () => {
                                 </div>
                                 <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                                     <button
-                                        onClick={() => window.open(shot.imageUrl.startsWith('http') ? shot.imageUrl : `http://localhost:5001${shot.imageUrl}`, '_blank')}
+                                        onClick={() => window.open(shot.imageUrl.startsWith('http') ? shot.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${shot.imageUrl}`, '_blank')}
                                         className="p-3 bg-white rounded-2xl text-slate-900 hover:scale-110 transition-transform shadow-lg"
                                     >
                                         <Eye size={20} />
