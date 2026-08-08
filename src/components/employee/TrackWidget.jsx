@@ -16,6 +16,8 @@ const TrackWidget = () => {
 
     const timerRef = useRef(null);
     const breakTimerRef = useRef(null);
+    const workStartTimestampRef = useRef(null);
+    const breakStartTimestampRef = useRef(null);
 
     const fetchSync = async () => {
         try {
@@ -26,21 +28,27 @@ const TrackWidget = () => {
             const isOnBreak = data.onBreak;
 
             if (data.working && data.checkInTime) {
-                const start = new Date(data.checkInTime);
-                const elapsed = Math.floor((new Date() - start) / 1000);
-                setElapsedSeconds(elapsed > 0 ? elapsed : 0);
+                let initialWorkSecs = 0;
+                if (data.activeWorkingSeconds !== undefined) {
+                    initialWorkSecs = data.activeWorkingSeconds;
+                } else {
+                    const start = new Date(data.checkInTime);
+                    const elapsed = Math.floor((new Date() - start) / 1000);
+                    initialWorkSecs = elapsed > 0 ? elapsed : 0;
+                }
 
                 if (!isOnBreak) {
-                    startEngine();
+                    startEngine(initialWorkSecs);
                     stopBreakEngine();
                 } else {
                     // On break — start break timer from breakStartTime
                     stopEngine();
+                    let initialBreakSecs = 0;
                     if (data.breakStartTime) {
                         const breakElapsed = Math.floor((new Date() - new Date(data.breakStartTime)) / 1000);
-                        setBreakElapsedSeconds(breakElapsed > 0 ? breakElapsed : 0);
+                        initialBreakSecs = breakElapsed > 0 ? breakElapsed : 0;
                     }
-                    startBreakEngine();
+                    startBreakEngine(initialBreakSecs);
                 }
 
                 if (window.electron) {
@@ -51,7 +59,8 @@ const TrackWidget = () => {
             } else {
                 stopEngine();
                 stopBreakEngine();
-                setElapsedSeconds((data.totalMinutes || 0) * 60);
+                const totalSecs = data.activeWorkingSeconds !== undefined ? data.activeWorkingSeconds : (data.totalMinutes || 0) * 60;
+                setElapsedSeconds(totalSecs);
                 if (window.electron) window.electron.send('stop-monitoring');
             }
         } catch (err) {
@@ -63,30 +72,114 @@ const TrackWidget = () => {
         }
     };
 
+    // Helper to get location with high accuracy falling back to low accuracy
+    const getCoordinates = async () => {
+        if (!("geolocation" in navigator)) {
+            return {};
+        }
+
+        const getPosition = (options) => {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, options);
+            });
+        };
+
+        try {
+            // Try high accuracy first
+            const position = await getPosition({
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+            return {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+        } catch (geoError) {
+            console.warn('High accuracy geolocation failed, trying low accuracy fallback:', geoError);
+            try {
+                // Fallback to low accuracy
+                const position = await getPosition({
+                    enableHighAccuracy: false,
+                    timeout: 8000,
+                    maximumAge: 60000
+                });
+                return {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
+            } catch (fallbackError) {
+                console.warn('Fallback geolocation also failed:', fallbackError);
+                toast.error('Location capture failed. Please check browser permissions.');
+                return {};
+            }
+        }
+    };
+
     useEffect(() => {
         fetchSync();
+
+        // Listen for visibility & window focus changes to update timer instantly when user returns to tab
+        const handleSyncOnReturn = () => {
+            fetchSync();
+        };
+
+        document.addEventListener('visibilitychange', handleSyncOnReturn);
+        window.addEventListener('focus', handleSyncOnReturn);
+
         const socket = getSocket();
+        let hb;
         if (socket) {
-            const hb = setInterval(() => socket.emit('heartbeat'), 30000);
-            return () => clearInterval(hb);
+            hb = setInterval(() => socket.emit('heartbeat'), 30000);
         }
+
         return () => {
+            document.removeEventListener('visibilitychange', handleSyncOnReturn);
+            window.removeEventListener('focus', handleSyncOnReturn);
+            if (hb) clearInterval(hb);
             stopEngine();
             stopBreakEngine();
         };
     }, []);
 
-    const startEngine = () => {
+    const startEngine = (initialSecs) => {
         if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = setInterval(() => setElapsedSeconds(prev => prev + 1), 1000);
+        if (initialSecs !== undefined) {
+            workStartTimestampRef.current = Date.now() - (initialSecs * 1000);
+        }
+
+        const tickWork = () => {
+            if (workStartTimestampRef.current) {
+                const sec = Math.max(0, Math.floor((Date.now() - workStartTimestampRef.current) / 1000));
+                setElapsedSeconds(sec);
+            }
+        };
+
+        tickWork();
+        timerRef.current = setInterval(tickWork, 1000);
     };
+
     const stopEngine = () => {
         if (timerRef.current) clearInterval(timerRef.current);
     };
-    const startBreakEngine = () => {
+
+    const startBreakEngine = (initialBreakSecs) => {
         if (breakTimerRef.current) clearInterval(breakTimerRef.current);
-        breakTimerRef.current = setInterval(() => setBreakElapsedSeconds(prev => prev + 1), 1000);
+        if (initialBreakSecs !== undefined) {
+            breakStartTimestampRef.current = Date.now() - (initialBreakSecs * 1000);
+        }
+
+        const tickBreak = () => {
+            if (breakStartTimestampRef.current) {
+                const sec = Math.max(0, Math.floor((Date.now() - breakStartTimestampRef.current) / 1000));
+                setBreakElapsedSeconds(sec);
+            }
+        };
+
+        tickBreak();
+        breakTimerRef.current = setInterval(tickBreak, 1000);
     };
+
     const stopBreakEngine = () => {
         if (breakTimerRef.current) clearInterval(breakTimerRef.current);
         setBreakElapsedSeconds(0);
@@ -95,7 +188,9 @@ const TrackWidget = () => {
     const handleCheckIn = async () => {
         setIsRefreshing(true);
         try {
-            await api.post('/attendance/check-in');
+            const coords = await getCoordinates();
+
+            await api.post('/attendance/check-in', coords);
             toast.success('Check-in Successful');
             await fetchSync();
             if (window.electron) {
@@ -114,7 +209,9 @@ const TrackWidget = () => {
         if (!window.confirm("Complete your shift and check out?")) return;
         setIsRefreshing(true);
         try {
-            await api.post('/attendance/checkout');
+            const coords = await getCoordinates();
+
+            await api.post('/attendance/checkout', coords);
             toast.success('Check-out Successful');
             stopBreakEngine();
             await fetchSync();
@@ -131,10 +228,9 @@ const TrackWidget = () => {
         try {
             await api.post('/attendance/break-start');
             toast.success('Break started — timer paused');
-            // Immediately update local state
             stopEngine();
             setBreakElapsedSeconds(0);
-            startBreakEngine();
+            startBreakEngine(0);
             setAttendance(prev => ({ ...prev, onBreak: true, breakStartTime: new Date().toISOString() }));
         } catch (err) {
             toast.error(err.response?.data?.message || 'Could not start break');
@@ -149,8 +245,9 @@ const TrackWidget = () => {
             await api.post('/attendance/break-end');
             toast.success('Break ended — back to work!');
             stopBreakEngine();
-            startEngine();
-            setAttendance(prev => ({ ...prev, onBreak: false, breakStartTime: null }));
+            const res = await api.get('/attendance/today');
+            setAttendance(res.data);
+            startEngine(res.data.activeWorkingSeconds || 0);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Could not end break');
         } finally {

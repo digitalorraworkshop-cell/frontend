@@ -27,6 +27,10 @@ import DesktopChatWidget from './pages/DesktopChatWidget';
 import EmployeeBirthdays from './pages/EmployeeBirthdays';
 import AdminBirthdays from './pages/AdminBirthdays';
 import AdminAssetManagement from './pages/AdminAssetManagement';
+import AdminAIInsights from './pages/AdminAIInsights';
+import AdminProjects from './pages/AdminProjects';
+import AdminPayroll from './pages/AdminPayroll';
+import AdminSettings from './pages/AdminSettings';
 import toast from 'react-hot-toast';
 
 function App() {
@@ -41,11 +45,9 @@ function App() {
       });
 
       window.electron.on('play-alert-sound', () => {
-        // High-pitched alert beep (base64)
         const beep = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YV9vT18A";
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.play().catch(() => {
-          // Fallback to system-like beep if remote fails or blocked
           const altAudio = new Audio(beep);
           altAudio.play().catch(e => console.error("Audio failed:", e));
         });
@@ -70,6 +72,7 @@ function App() {
             <Route path="employees" element={<EmployeeList />} />
             <Route path="leaves" element={<AdminLeaves />} />
             <Route path="tasks" element={<AdminTasks />} />
+            <Route path="projects" element={<AdminProjects />} />
             <Route path="activity-monitoring" element={<AdminActivityMonitoring />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="learning-reports" element={<AdminLearningReports />} />
@@ -79,6 +82,9 @@ function App() {
             <Route path="chat" element={<Chat />} />
             <Route path="birthdays" element={<AdminBirthdays />} />
             <Route path="assets" element={<AdminAssetManagement />} />
+            <Route path="ai-insights" element={<AdminAIInsights />} />
+            <Route path="payroll" element={<AdminPayroll />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
 
           <Route path="/employee" element={

@@ -1,28 +1,41 @@
-import React, { useContext, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useContext, useState, useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../common/Sidebar';
 import AuthContext from '../../context/AuthContext';
-import { Bell, Search, Settings, HelpCircle, Menu, X } from 'lucide-react';
+import { Bell, Search, Settings, HelpCircle, Menu, Command } from 'lucide-react';
 import ChatPanel from '../chat/ChatPanel';
 import { initSocket, disconnectSocket } from '../../utils/socket';
-import { useEffect } from 'react';
 import BirthdayNotificationBanner from '../common/BirthdayNotificationBanner';
+import CommandPalette from '../common/CommandPalette';
 
 const AdminLayout = () => {
     const { user } = useContext(AuthContext);
     const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (user && user.token) {
             initSocket(user.token);
         }
+
+        const handleOpenPalette = () => setIsCommandPaletteOpen(true);
+        window.addEventListener('open-command-palette', handleOpenPalette);
+
         return () => {
             disconnectSocket();
+            window.removeEventListener('open-command-palette', handleOpenPalette);
         };
     }, [user]);
 
     return (
         <div className="flex h-screen bg-slate-50/50 font-sans overflow-hidden relative">
+            {/* Command Palette Modal */}
+            <CommandPalette 
+                isOpen={isCommandPaletteOpen} 
+                onClose={() => setIsCommandPaletteOpen(false)} 
+            />
+
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
                 <div
@@ -31,7 +44,7 @@ const AdminLayout = () => {
                 />
             )}
 
-            {/* Sidebar with mobile toggle logic */}
+            {/* Sidebar */}
             <div className={`fixed inset-y-0 left-0 z-[60] transform lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <Sidebar onMobileClose={() => setSidebarOpen(false)} />
             </div>
@@ -47,27 +60,34 @@ const AdminLayout = () => {
                             <Menu size={24} />
                         </button>
 
-                        <div className="relative w-full max-w-md hidden sm:block">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search everything..."
-                                className="w-full pl-12 pr-4 py-2.5 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-slate-400"
-                            />
-                        </div>
+                        <button
+                            onClick={() => setIsCommandPaletteOpen(true)}
+                            className="relative w-full max-w-md hidden sm:flex items-center justify-between px-4 py-2.5 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-sm transition-all text-slate-400 font-bold group cursor-pointer"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Search className="text-slate-400 group-hover:text-brand-600 transition-colors" size={18} />
+                                <span>Search modules, users, tasks...</span>
+                            </div>
+                            <span className="flex items-center gap-1 text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-slate-500 font-mono shadow-sm">
+                                <Command size={10} /> K
+                            </span>
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-4">
                         <div className="flex items-center gap-0.5 sm:gap-1">
-                            <button className="hidden sm:flex p-2.5 text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">
-                                <HelpCircle size={20} />
-                            </button>
-                            <button className="p-2.5 text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">
+                            <button 
+                                onClick={() => navigate('/admin/settings')}
+                                className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
+                            >
                                 <Settings size={20} />
                             </button>
-                            <button className="p-2.5 text-slate-500 hover:bg-slate-50 rounded-xl relative transition-colors">
+                            <button 
+                                onClick={() => navigate('/admin/ai-insights')}
+                                className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl relative transition-colors"
+                            >
                                 <Bell size={20} />
-                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-500 rounded-full border-2 border-white"></span>
+                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-500 rounded-full border-2 border-white animate-ping"></span>
                             </button>
                         </div>
                         <div className="h-8 w-px bg-slate-200 mx-1 sm:mx-2"></div>
@@ -97,4 +117,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

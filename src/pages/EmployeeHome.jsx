@@ -1,10 +1,31 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { Clock, CheckCircle2, Timer, AlertCircle, Calendar, Briefcase, Zap, Star, TrendingUp, Plus, Trash2, CheckCircle, ClipboardList, StickyNote, Cake } from 'lucide-react';
+import { 
+    Clock, 
+    CheckCircle2, 
+    Timer, 
+    AlertCircle, 
+    Calendar, 
+    Briefcase, 
+    Zap, 
+    Star, 
+    TrendingUp, 
+    Plus, 
+    Trash2, 
+    CheckCircle, 
+    ClipboardList, 
+    StickyNote, 
+    Cake,
+    ShieldAlert,
+    UserCheck,
+    CheckSquare,
+    ArrowRight
+} from 'lucide-react';
 import TrackWidget from '../components/employee/TrackWidget';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
+import { getSocket } from '../utils/socket';
 
 const EmployeeHome = ({ scrollToTodo }) => {
     const { user, loading: authLoading } = useContext(AuthContext);
@@ -18,6 +39,7 @@ const EmployeeHome = ({ scrollToTodo }) => {
         productivityPercent: 0
     });
     const [todos, setTodos] = useState([]);
+    const [adminTasks, setAdminTasks] = useState([]);
     const [birthdays, setBirthdays] = useState([]);
     const [newTodo, setNewTodo] = useState('');
     const [todoLoading, setTodoLoading] = useState(true);
@@ -33,6 +55,28 @@ const EmployeeHome = ({ scrollToTodo }) => {
                 fetchStats();
                 fetchTodos();
             }, 30000);
+
+            // Connect socket listener for real-time task assignment updates
+            const socket = getSocket();
+            if (socket) {
+                const handleSocketTaskUpdate = () => {
+                    fetchStats();
+                    fetchTodos();
+                };
+                socket.on('taskUpdate', handleSocketTaskUpdate);
+
+                if (scrollToTodo && todoRef.current) {
+                    setTimeout(() => {
+                        todoRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 500);
+                }
+
+                return () => {
+                    clearInterval(timer);
+                    clearInterval(interval);
+                    socket.off('taskUpdate', handleSocketTaskUpdate);
+                };
+            }
 
             if (scrollToTodo && todoRef.current) {
                 setTimeout(() => {
@@ -77,9 +121,11 @@ const EmployeeHome = ({ scrollToTodo }) => {
         try {
             const { data } = await api.get('/tasks');
             const selfTasks = data.filter(t => t.assignType === 'SELF');
+            const adminAssigned = data.filter(t => t.assignType === 'ADMIN' || t.assignType === 'MANAGER');
             setTodos(selfTasks);
+            setAdminTasks(adminAssigned);
         } catch (error) {
-            console.error("Todo fetch error:", error);
+            console.error("Task fetch error:", error);
         } finally {
             setTodoLoading(false);
         }
@@ -117,6 +163,17 @@ const EmployeeHome = ({ scrollToTodo }) => {
         }
     };
 
+    const updateAdminTaskStatus = async (id, newStatus) => {
+        try {
+            const { data } = await api.put(`/tasks/${id}`, { status: newStatus });
+            setAdminTasks(adminTasks.map(t => t._id === id ? data : t));
+            toast.success(`Task status updated to ${newStatus}`);
+            fetchStats();
+        } catch (error) {
+            toast.error("Failed to update status");
+        }
+    };
+
     const getNoteColor = (index) => {
         const colors = [
             'bg-amber-100 border-amber-200 text-amber-800',
@@ -127,6 +184,27 @@ const EmployeeHome = ({ scrollToTodo }) => {
             'bg-orange-100 border-orange-200 text-orange-800'
         ];
         return colors[index % colors.length];
+    };
+
+    const getDueDateBadge = (dueDateStr) => {
+        if (!dueDateStr) return null;
+        const due = new Date(dueDateStr);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        due.setHours(0,0,0,0);
+
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            return <span className="px-2.5 py-1 bg-rose-100 text-rose-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Overdue</span>;
+        } else if (diffDays === 0) {
+            return <span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Due Today</span>;
+        } else if (diffDays === 1) {
+            return <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Due Tomorrow</span>;
+        } else {
+            return <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[10px] font-black rounded-lg uppercase tracking-wider">{diffDays} Days Left</span>;
+        }
     };
 
     return (
@@ -260,6 +338,78 @@ const EmployeeHome = ({ scrollToTodo }) => {
                         </div>
                     </div>
 
+                    {/* Admin Assigned Tasks & Reminders Section */}
+                    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-10 rounded-[40px] shadow-2xl text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div className="flex justify-between items-center mb-8 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-brand-500/20 text-brand-400 rounded-2xl border border-brand-500/30">
+                                    <ClipboardList size={26} />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black tracking-tight text-white">Admin Assigned Tasks</h3>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Directives from Management</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => navigate('/employee/tasks')}
+                                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all backdrop-blur-md"
+                            >
+                                Workboard <ArrowRight size={14} />
+                            </button>
+                        </div>
+
+                        {/* Admin Tasks List */}
+                        <div className="space-y-4 relative z-10 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+                            {adminTasks.length === 0 ? (
+                                <div className="py-12 text-center text-slate-400 bg-white/5 rounded-3xl border border-white/5">
+                                    <CheckSquare size={36} className="mx-auto mb-3 text-slate-500 opacity-40" />
+                                    <p className="text-sm font-bold text-slate-300">All clear! No admin tasks assigned.</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest mt-1 text-slate-500">Tasks assigned by your admin will pop up here instantly</p>
+                                </div>
+                            ) : (
+                                adminTasks.map(task => (
+                                    <div
+                                        key={task._id}
+                                        className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 hover:border-brand-500/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-6"
+                                    >
+                                        <div className="space-y-2 flex-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <span className={`px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
+                                                    task.priority === 'High' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                                                    task.priority === 'Medium' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                                    'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                }`}>
+                                                    {task.priority} Priority
+                                                </span>
+                                                {getDueDateBadge(task.dueDate)}
+                                                <span className="text-[10px] text-slate-400 font-bold">
+                                                    Assigned by <strong className="text-slate-200">{task.assignedBy?.name || 'Admin'}</strong>
+                                                </span>
+                                            </div>
+                                            <h4 className="text-lg font-black text-white leading-snug line-clamp-1">{task.title}</h4>
+                                            {task.description && (
+                                                <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed font-medium">{task.description}</p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <select
+                                                value={task.status}
+                                                onChange={(e) => updateAdminTaskStatus(task._id, e.target.value)}
+                                                className="bg-slate-900 text-white border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-brand-500/40 cursor-pointer"
+                                            >
+                                                <option value="Pending">Pending</option>
+                                                <option value="In Progress">In Progress</option>
+                                                <option value="Completed">Completed</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
                     {/* Today's To-Do List Widget (Sticky Notes Style) */}
                     <div ref={todoRef} className="bg-white p-10 rounded-[40px] border border-slate-50 shadow-xl shadow-slate-200/30 flex flex-col min-h-[500px]">
                         <div className="flex justify-between items-center mb-10">
@@ -269,12 +419,12 @@ const EmployeeHome = ({ scrollToTodo }) => {
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900 tracking-tight">Working Sticky Notes</h3>
-                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Quick daily reminders</p>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Quick personal notes</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="px-4 py-1.5 bg-brand-50 text-brand-600 rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] border border-brand-100">
-                                    {todos.filter(t => t.status !== 'Completed').length} Pending Tasks
+                                    {todos.filter(t => t.status !== 'Completed').length} Self Tasks
                                 </span>
                             </div>
                         </div>
@@ -314,8 +464,8 @@ const EmployeeHome = ({ scrollToTodo }) => {
                                     <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mb-6">
                                         <StickyNote size={48} className="opacity-20" />
                                     </div>
-                                    <h4 className="text-lg font-bold text-slate-500">No notes on your desk!</h4>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-3 opacity-60">Add a quick note above to see it here</p>
+                                    <h4 className="text-lg font-bold text-slate-500">No personal notes yet!</h4>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-3 opacity-60">Add a quick note above to stick it here</p>
                                 </div>
                             ) : (
                                 todos.map((todo, index) => (

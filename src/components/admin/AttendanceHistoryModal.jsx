@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { X, Calendar, Search, Download, Loader2 } from 'lucide-react';
+import { X, Calendar, Search, Download, Loader2, MapPin } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+
+const formatShortLocation = (lat, lon, address) => {
+    if (address) {
+        const parts = address.split(',').map(p => p.trim());
+        const filtered = parts.filter(p => !/^\d{5,6}$/.test(p) && p.toLowerCase() !== 'india');
+        return filtered.slice(0, 2).join(', ');
+    }
+    if (lat && lon) {
+        return `${Number(lat).toFixed(3)}, ${Number(lon).toFixed(3)}`;
+    }
+    return '';
+};
 
 const AttendanceHistoryModal = ({ isOpen, onClose, employee }) => {
     const [history, setHistory] = useState([]);
@@ -96,6 +108,7 @@ const AttendanceHistoryModal = ({ isOpen, onClose, employee }) => {
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Check Out</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -132,6 +145,63 @@ const AttendanceHistoryModal = ({ isOpen, onClose, employee }) => {
                                                     }`}>
                                                     {record.status}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col items-center gap-1.5">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {/* Check In Location */}
+                                                        {(record.checkInLatitude || record.latitude) ? (
+                                                            <div className="relative group/modal-loc inline-block">
+                                                                <a
+                                                                    href={`https://www.google.com/maps?q=${record.checkInLatitude || record.latitude},${record.checkInLongitude || record.longitude}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center justify-center p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all shadow-sm border border-emerald-100/50 w-8 h-8"
+                                                                    title="View Check-in Location"
+                                                                >
+                                                                    <MapPin size={13} />
+                                                                </a>
+                                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900 text-white text-[10px] p-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/modal-loc:opacity-100 transition-opacity z-50 text-center font-medium leading-normal">
+                                                                    <span className="font-black text-emerald-400 block mb-0.5">CHECK-IN LOCATION:</span>
+                                                                    {record.checkInLocation || `Coordinates: ${(record.checkInLatitude || record.latitude).toFixed(4)}, ${(record.checkInLongitude || record.longitude).toFixed(4)}`}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-200" title="Check-in location not captured"><MapPin size={13} /></span>
+                                                        )}
+
+                                                        {/* Check Out Location */}
+                                                        {record.checkOutLatitude ? (
+                                                            <div className="relative group/modal-checkout-loc inline-block">
+                                                                <a
+                                                                    href={`https://www.google.com/maps?q=${record.checkOutLatitude},${record.checkOutLongitude}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center justify-center p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all shadow-sm border border-rose-100/50 w-8 h-8"
+                                                                    title="View Check-out Location"
+                                                                >
+                                                                    <MapPin size={13} className="rotate-180" />
+                                                                </a>
+                                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900 text-white text-[10px] p-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/modal-checkout-loc:opacity-100 transition-opacity z-50 text-center font-medium leading-normal">
+                                                                    <span className="font-black text-rose-400 block mb-0.5">CHECK-OUT LOCATION:</span>
+                                                                    {record.checkOutLocation || `Coordinates: ${record.checkOutLatitude.toFixed(4)}, ${record.checkOutLongitude.toFixed(4)}`}
+                                                                </div>
+                                                            </div>
+                                                        ) : record.checkOutTime ? (
+                                                            <span className="text-slate-200" title="Check-out location not captured"><MapPin size={13} className="rotate-180" /></span>
+                                                        ) : null}
+                                                    </div>
+
+                                                    {/* Short Address Display */}
+                                                    <div className="text-[10px] text-slate-400 font-semibold max-w-[130px] truncate text-center" title={record.checkInLocation || ""}>
+                                                        {formatShortLocation(record.checkInLatitude || record.latitude, record.checkInLongitude || record.longitude, record.checkInLocation) || '---'}
+                                                        {record.checkOutLatitude && (
+                                                            <span className="block text-[8px] text-slate-300 font-bold uppercase mt-0.5">
+                                                                Out: {formatShortLocation(record.checkOutLatitude, record.checkOutLongitude, record.checkOutLocation)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))

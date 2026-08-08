@@ -31,10 +31,14 @@ const EmployeeTasks = () => {
 
         const socket = getSocket();
         if (socket) {
-            socket.on('taskUpdate', (payload) => {
-                fetchTasks(); // Simple reload for now to ensure consistency
-            });
-            return () => socket.off('taskUpdate');
+            const handleSocketTask = (payload) => {
+                if (payload?.type === 'CREATED') {
+                    toast.success(`New Task: "${payload.task?.title || 'Task'}" assigned!`);
+                }
+                fetchTasks();
+            };
+            socket.on('taskUpdate', handleSocketTask);
+            return () => socket.off('taskUpdate', handleSocketTask);
         }
     }, []);
 

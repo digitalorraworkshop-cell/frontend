@@ -14,7 +14,8 @@ import {
     Trash2,
     Edit3,
     ArrowUpDown,
-    CheckSquare
+    CheckSquare,
+    MessageSquare
 } from 'lucide-react';
 import { getSocket } from '../utils/socket';
 
