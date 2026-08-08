@@ -76,6 +76,52 @@ app.use((req, res, next) => {
 });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Route Handlers
+const authRoutes = require('./routes/authRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
+const screenshotRoutes = require('./routes/screenshotRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const dailyUpdateRoutes = require('./routes/dailyUpdateRoutes');
+const birthdayRoutes = require('./routes/birthdayRoutes');
+const assetRoutes = require('./routes/assetRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const payrollRoutes = require('./routes/payrollRoutes');
+const meetingRoutes = require('./routes/meetingRoutes');
+
+// Mount Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/screenshots', screenshotRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/daily-updates', dailyUpdateRoutes);
+app.use('/api/daily_updates', dailyUpdateRoutes); // Alias for reliability
+app.use('/api/birthdays', birthdayRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/payroll', payrollRoutes);
+app.use('/api/meetings', meetingRoutes);
+
+app.get('/', (req, res) => {
+    res.send('API is running...');
+});
+
+// Global Error Handler Middleware
+app.use((err, req, res, next) => {
+    console.error('[GLOBAL-ERROR]', err.stack);
+    res.status(500).json({
+        success: false,
+        message: 'Something went wrong!',
+        error: process.env.NODE_ENV === 'production' ? null : err.message
+    });
+});
 
 // Database Connection & Server Startup
 mongoose.set("strictQuery", false);
@@ -120,54 +166,6 @@ mongoose.connect(process.env.MONGO_URI)
         process.exit(1);
     });
 
-const authRoutes = require('./routes/authRoutes');
-const employeeRoutes = require('./routes/employeeRoutes');
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const screenshotRoutes = require('./routes/screenshotRoutes');
-const leaveRoutes = require('./routes/leaveRoutes');
-const taskRoutes = require('./routes/taskRoutes');
-const activityRoutes = require('./routes/activityRoutes');
-const chatRoutes = require('./routes/chatRoutes');
-const dailyUpdateRoutes = require('./routes/dailyUpdateRoutes');
-const birthdayRoutes = require('./routes/birthdayRoutes');
-const assetRoutes = require('./routes/assetRoutes');
-const aiRoutes = require('./routes/aiRoutes');
-const payrollRoutes = require('./routes/payrollRoutes');
-
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/activity', activityRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/screenshots', screenshotRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/leaves', leaveRoutes);
-app.use('/api/employees', employeeRoutes);
-app.use('/api/daily-updates', dailyUpdateRoutes);
-app.use('/api/daily_updates', dailyUpdateRoutes); // Alias for reliability
-app.use('/api/birthdays', birthdayRoutes);
-app.use('/api/assets', assetRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/payroll', payrollRoutes);
-
-
-app.get('/', (req, res) => {
-    res.send('API is running...');
-});
-
-// server.listen(PORT, ...) is now inside connectDB().then()
-
-// Global Error Handler Middleware
-app.use((err, req, res, next) => {
-    console.error('[GLOBAL-ERROR]', err.stack);
-    res.status(500).json({
-        success: false,
-        message: 'Something went wrong!',
-        error: process.env.NODE_ENV === 'production' ? null : err.message
-    });
-});
-
 process.on('unhandledRejection', (err) => {
     console.error('[FATAL] Unhandled Rejection:', err);
 });
@@ -192,7 +190,6 @@ setInterval(async () => {
         }
 
         // 2. Cleanup Offline: Persistent inactive users
-        // Give Working users (Checked-in) a 15-minute grace period without pulses before marking Offline
         const ghostUsers = await User.find({
             currentStatus: { $in: ['Online', 'Idle', 'Working', 'On Break'] },
             lastActiveAt: { $lt: fifteenMinsAgo }
