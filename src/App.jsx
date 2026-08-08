@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import AdminLayout from './components/layout/AdminLayout';
-import AdminHome from './pages/AdminHome';
+import AdminDashboard from './pages/AdminDashboard';
 import EmployeeList from './pages/EmployeeList';
 import EmployeeCredentials from './pages/EmployeeCredentials';
 import EmployeeLayout from './components/layout/EmployeeLayout';
@@ -27,10 +27,7 @@ import DesktopChatWidget from './pages/DesktopChatWidget';
 import EmployeeBirthdays from './pages/EmployeeBirthdays';
 import AdminBirthdays from './pages/AdminBirthdays';
 import AdminAssetManagement from './pages/AdminAssetManagement';
-import AdminAIInsights from './pages/AdminAIInsights';
-import AdminProjects from './pages/AdminProjects';
-import AdminPayroll from './pages/AdminPayroll';
-import AdminSettings from './pages/AdminSettings';
+import Meetings from './pages/Meetings';
 import toast from 'react-hot-toast';
 
 function App() {
@@ -68,11 +65,11 @@ function App() {
               <AdminLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<AdminHome />} />
+            <Route index element={<AdminDashboard />} />
             <Route path="employees" element={<EmployeeList />} />
+            <Route path="meetings" element={<Meetings />} />
             <Route path="leaves" element={<AdminLeaves />} />
             <Route path="tasks" element={<AdminTasks />} />
-            <Route path="projects" element={<AdminProjects />} />
             <Route path="activity-monitoring" element={<AdminActivityMonitoring />} />
             <Route path="attendance" element={<AdminAttendance />} />
             <Route path="learning-reports" element={<AdminLearningReports />} />
@@ -82,9 +79,6 @@ function App() {
             <Route path="chat" element={<Chat />} />
             <Route path="birthdays" element={<AdminBirthdays />} />
             <Route path="assets" element={<AdminAssetManagement />} />
-            <Route path="ai-insights" element={<AdminAIInsights />} />
-            <Route path="payroll" element={<AdminPayroll />} />
-            <Route path="settings" element={<AdminSettings />} />
           </Route>
 
           <Route path="/employee" element={
@@ -94,6 +88,7 @@ function App() {
           }>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<EmployeeHome />} />
+            <Route path="meetings" element={<Meetings />} />
             <Route path="tasks" element={<EmployeeTasks />} />
             <Route path="todo" element={<EmployeeTodo />} />
             <Route path="attendance" element={<EmployeeAttendance />} />

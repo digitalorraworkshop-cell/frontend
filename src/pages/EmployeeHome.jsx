@@ -41,6 +41,7 @@ const EmployeeHome = ({ scrollToTodo }) => {
     const [todos, setTodos] = useState([]);
     const [adminTasks, setAdminTasks] = useState([]);
     const [birthdays, setBirthdays] = useState([]);
+    const [myMeetings, setMyMeetings] = useState([]);
     const [newTodo, setNewTodo] = useState('');
     const [todoLoading, setTodoLoading] = useState(true);
     const todoRef = useRef(null);
@@ -64,6 +65,7 @@ const EmployeeHome = ({ scrollToTodo }) => {
                     fetchTodos();
                 };
                 socket.on('taskUpdate', handleSocketTaskUpdate);
+                socket.on('newMeeting', fetchStats);
 
                 if (scrollToTodo && todoRef.current) {
                     setTimeout(() => {
@@ -75,6 +77,7 @@ const EmployeeHome = ({ scrollToTodo }) => {
                     clearInterval(timer);
                     clearInterval(interval);
                     socket.off('taskUpdate', handleSocketTaskUpdate);
+                    socket.off('newMeeting', fetchStats);
                 };
             }
 
@@ -95,10 +98,11 @@ const EmployeeHome = ({ scrollToTodo }) => {
 
     const fetchStats = async () => {
         try {
-            const [statsRes, tasksRes, birthdaysRes] = await Promise.all([
+            const [statsRes, tasksRes, birthdaysRes, meetingsRes] = await Promise.all([
                 api.get(`/activity/stats/${user._id}`),
                 api.get('/tasks'),
-                api.get('/birthdays/upcoming?days=7')
+                api.get('/birthdays/upcoming?days=7'),
+                api.get('/meetings/today-timeline').catch(() => ({ data: [] }))
             ]);
 
             const tasks = tasksRes.data || [];
@@ -112,6 +116,7 @@ const EmployeeHome = ({ scrollToTodo }) => {
                 pendingTasks: pending
             });
             setBirthdays(birthdaysRes.data || []);
+            setMyMeetings(Array.isArray(meetingsRes.data) ? meetingsRes.data : []);
         } catch (error) {
             console.error("Stats fetch error:", error);
         }
@@ -337,6 +342,60 @@ const EmployeeHome = ({ scrollToTodo }) => {
                             <h4 className="text-3xl font-black text-slate-900 tabular-nums">{stats.productivityPercent}%</h4>
                         </div>
                     </div>
+
+                    {/* Today's Scheduled Meetings Widget */}
+                    {myMeetings.length > 0 && (
+                        <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl space-y-4">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900">Today's Meetings & Video Conferences</h3>
+                                    <p className="text-xs text-slate-500 font-medium">Join scheduled Google Meet and team sessions</p>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/employee/meetings')}
+                                    className="text-xs font-bold text-brand-600 hover:text-brand-700"
+                                >
+                                    View Hub →
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {myMeetings.map(m => (
+                                    <div key={m._id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between space-y-3">
+                                        <div>
+                                            <div className="flex items-center justify-between text-[10px] font-black text-brand-600 uppercase mb-1">
+                                                <span>{m.startTime} - {m.endTime}</span>
+                                                <span className="bg-brand-50 px-2 py-0.5 rounded text-brand-700">{m.meetingType}</span>
+                                            </div>
+                                            <h4 className="text-sm font-black text-slate-900">{m.title}</h4>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">{m.relatedClient ? `Client: ${m.relatedClient}` : `Host: ${m.organizer?.name || 'Organizer'}`}</p>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+                                            {m.meetingLink ? (
+                                                <a
+                                                    href={m.meetingLink}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                                                >
+                                                    JOIN MEET →
+                                                </a>
+                                            ) : (
+                                                <span className="text-[10px] text-slate-400 font-bold">Physical Room</span>
+                                            )}
+                                            <button
+                                                onClick={() => navigate('/employee/meetings')}
+                                                className="text-[10px] font-bold text-slate-600 hover:text-slate-900"
+                                            >
+                                                Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Admin Assigned Tasks & Reminders Section */}
                     <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-10 rounded-[40px] shadow-2xl text-white relative overflow-hidden">

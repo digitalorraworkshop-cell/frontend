@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
     LayoutDashboard, 
@@ -6,25 +6,14 @@ import {
     FileText, 
     ClipboardList, 
     LogOut, 
-    ShieldCheck, 
+    Clock, 
     Activity, 
     MessageSquare, 
     Cake, 
-    X, 
-    Bot, 
-    Briefcase, 
-    DollarSign, 
-    Settings as SettingsIcon,
-    ChevronDown,
-    ChevronRight,
-    Search,
-    Pin,
-    Calendar,
-    Award,
-    Sparkles,
-    FolderKanban,
-    Clock,
-    BookOpen
+    ShieldCheck, 
+    BookOpen,
+    Video,
+    X 
 } from 'lucide-react';
 import AuthContext from '../../context/AuthContext';
 
@@ -32,26 +21,10 @@ const Sidebar = ({ onMobileClose }) => {
     const { logout, user } = useContext(AuthContext);
     const navigate = useNavigate();
     const location = useLocation();
-    
-    const [searchQuery, setSearchQuery] = useState('');
-    const [openCategories, setOpenCategories] = useState({
-        employees: true,
-        hr: true,
-        projects: true,
-        productivity: true,
-        payroll: false,
-        communication: false,
-        learning: false,
-        assets: false
-    });
 
     const handleLogout = () => {
         logout();
         navigate('/login');
-    };
-
-    const toggleCategory = (cat) => {
-        setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
     };
 
     const isActive = (path) => {
@@ -63,209 +36,80 @@ const Sidebar = ({ onMobileClose }) => {
     const role = user?.role?.toLowerCase() || 'employee';
     const isAdminRole = ['admin', 'seo-manager', 'assets-manager', 'manager'].includes(role);
 
-    // Enterprise Navigation Structure
-    const navCategories = [
-        {
-            title: 'Overview',
-            items: [
-                { path: '/admin', name: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-                { path: '/admin/ai-insights', name: 'AI Insights & HR Bot', icon: <Bot size={18} />, badge: 'AI' }
-            ]
-        },
-        {
-            id: 'employees',
-            title: '👥 Employees',
-            items: [
-                { path: '/admin/employees', name: 'Employee List', icon: <Users size={18} /> },
-                { path: '/admin/birthdays', name: 'Birthdays & Events', icon: <Cake size={18} /> }
-            ]
-        },
-        {
-            id: 'hr',
-            title: '⏰ HR & Workforce',
-            items: [
-                { path: '/admin/attendance', name: 'Attendance & GPS', icon: <Clock size={18} /> },
-                { path: '/admin/leaves', name: 'Leave Management', icon: <FileText size={18} /> }
-            ]
-        },
-        {
-            id: 'projects',
-            title: '📁 Projects & Tasks',
-            items: [
-                { path: '/admin/tasks', name: 'Tasks & Directives', icon: <ClipboardList size={18} /> },
-                { path: '/admin/projects', name: 'Projects & Kanban', icon: <FolderKanban size={18} />, badge: 'New' }
-            ]
-        },
-        {
-            id: 'productivity',
-            title: '📊 Productivity',
-            items: [
-                { path: '/admin/activity-monitoring', name: 'Screenshots & Activity', icon: <Activity size={18} /> }
-            ]
-        },
-        {
-            id: 'payroll',
-            title: '💰 Payroll & Finance',
-            items: [
-                { path: '/admin/payroll', name: 'Salary & Payslips', icon: <DollarSign size={18} /> }
-            ]
-        },
-        {
-            id: 'communication',
-            title: '💬 Communication',
-            items: [
-                { path: '/admin/chat', name: 'Team Chat & Hub', icon: <MessageSquare size={18} /> }
-            ]
-        },
-        {
-            id: 'learning',
-            title: '🎓 Learning & Assets',
-            items: [
-                { path: '/admin/learning-reports', name: 'Learning Logs', icon: <BookOpen size={18} /> },
-                { path: '/admin/assets', name: 'Assets & Hardware', icon: <ShieldCheck size={18} /> }
-            ]
-        },
-        {
-            title: 'System',
-            items: [
-                { path: '/admin/settings', name: 'Settings & Roles', icon: <SettingsIcon size={18} /> }
-            ]
-        }
+    const adminNav = [
+        { path: '/admin', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+        { path: '/admin/employees', name: 'Employees', icon: <Users size={20} /> },
+        { path: '/admin/meetings', name: 'Meetings', icon: <Video size={20} /> },
+        { path: '/admin/attendance', name: 'Attendance', icon: <Clock size={20} /> },
+        { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} /> },
+        { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} /> },
+        { path: '/admin/activity-monitoring', name: 'Screenshots', icon: <Activity size={20} /> },
+        { path: '/admin/learning-reports', name: 'Learning Logs', icon: <BookOpen size={20} /> },
+        { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} /> },
+        { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
+        { path: '/admin/assets', name: 'Assets', icon: <ShieldCheck size={20} /> },
     ];
 
-    // Employee specific layout if role is basic employee
     const employeeNav = [
-        { path: '/employee/dashboard', name: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-        { path: '/employee/tasks', name: 'My Tasks', icon: <ClipboardList size={18} /> },
-        { path: '/employee/attendance', name: 'Attendance', icon: <Clock size={18} /> },
-        { path: '/employee/apply-leave', name: 'Apply Leave', icon: <FileText size={18} /> },
-        { path: '/employee/chat', name: 'Team Chat', icon: <MessageSquare size={18} /> },
-        { path: '/employee/profile', name: 'My Profile', icon: <Users size={18} /> },
-        { path: '/employee/birthdays', name: 'Birthdays', icon: <Cake size={18} /> }
+        { path: '/employee/dashboard', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+        { path: '/employee/meetings', name: 'Meetings', icon: <Video size={20} /> },
+        { path: '/employee/tasks', name: 'My Tasks', icon: <ClipboardList size={20} /> },
+        { path: '/employee/todo', name: 'Todo List', icon: <ClipboardList size={20} /> },
+        { path: '/employee/attendance', name: 'Attendance', icon: <Clock size={20} /> },
+        { path: '/employee/apply-leave', name: 'Apply Leave', icon: <FileText size={20} /> },
+        { path: '/employee/chat', name: 'Team Chat', icon: <MessageSquare size={20} /> },
+        { path: '/employee/profile', name: 'My Profile', icon: <Users size={20} /> },
+        { path: '/employee/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
     ];
+
+    const navItems = isAdminRole ? adminNav : employeeNav;
 
     return (
-        <div className="h-full w-72 bg-slate-950 text-slate-100 flex flex-col shadow-2xl font-sans relative border-r border-slate-800/60 select-none">
-            {/* Mobile Close */}
+        <div className="h-full w-64 bg-slate-900 text-white flex flex-col shadow-xl font-sans relative border-r border-slate-800">
+            {/* Mobile Close Button */}
             <button
                 onClick={onMobileClose}
-                className="lg:hidden absolute top-6 right-6 p-2 text-slate-400 hover:text-white"
+                className="lg:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-white"
             >
-                <X size={24} />
+                <X size={20} />
             </button>
 
             {/* Brand Header */}
-            <div className="p-6 flex items-center gap-3 border-b border-slate-800/80 bg-slate-900/40">
-                <div className="w-11 h-11 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/20 ring-2 ring-white/10">
-                    <ShieldCheck size={24} className="text-white" />
+            <div className="p-6 flex items-center gap-3 border-b border-slate-800">
+                <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-600/30">
+                    <ShieldCheck size={22} className="text-white" />
                 </div>
                 <div>
-                    <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-                        TimeTracker <span className="text-xs px-2 py-0.5 bg-brand-500/20 text-brand-400 font-bold rounded-md border border-brand-500/30">PRO</span>
-                    </h1>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Enterprise SaaS v2.5</p>
+                    <h1 className="text-lg font-bold text-white tracking-tight">TimeTracker</h1>
+                    <p className="text-xs text-slate-400 font-medium">Control Portal</p>
                 </div>
             </div>
 
-            {/* Quick Menu Search */}
-            {isAdminRole && (
-                <div className="px-5 pt-4 pb-2">
-                    <div className="flex items-center gap-2 bg-slate-900 px-3.5 py-2.5 rounded-2xl border border-slate-800 focus-within:border-brand-500/50 transition-colors">
-                        <Search size={14} className="text-slate-500" />
-                        <input
-                            type="text"
-                            placeholder="Filter navigation..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-transparent text-xs text-white placeholder:text-slate-500 border-none outline-none font-bold w-full"
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* Navigation Body */}
-            <nav className="flex-1 px-4 py-3 space-y-4 overflow-y-auto custom-scrollbar">
-                {isAdminRole ? (
-                    navCategories.map((group, idx) => {
-                        const filteredItems = group.items.filter(i => 
-                            i.name.toLowerCase().includes(searchQuery.toLowerCase())
-                        );
-
-                        if (searchQuery && filteredItems.length === 0) return null;
-
-                        const isCollapsible = !!group.id;
-                        const isOpen = isCollapsible ? openCategories[group.id] : true;
-
-                        return (
-                            <div key={idx} className="space-y-1">
-                                {group.title && (
-                                    <div 
-                                        onClick={() => isCollapsible && toggleCategory(group.id)}
-                                        className={`flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 ${isCollapsible ? 'cursor-pointer hover:text-slate-200' : ''}`}
-                                    >
-                                        <span>{group.title}</span>
-                                        {isCollapsible && (
-                                            isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />
-                                        )}
-                                    </div>
-                                )}
-
-                                {isOpen && (searchQuery ? filteredItems : group.items).map((item) => (
-                                    <Link
-                                        key={item.path}
-                                        to={item.path}
-                                        onClick={onMobileClose}
-                                        className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all duration-200 group font-bold text-xs ${isActive(item.path)
-                                            ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30'
-                                            : 'text-slate-400 hover:bg-slate-900/80 hover:text-white'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <span className={isActive(item.path) ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'}>
-                                                {item.icon}
-                                            </span>
-                                            <span>{item.name}</span>
-                                        </div>
-
-                                        {item.badge && (
-                                            <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-widest ${
-                                                isActive(item.path) ? 'bg-white text-brand-600' : 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
-                                            }`}>
-                                                {item.badge}
-                                            </span>
-                                        )}
-                                    </Link>
-                                ))}
-                            </div>
-                        );
-                    })
-                ) : (
-                    <div className="space-y-1 pt-2">
-                        <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Employee Portal</p>
-                        {employeeNav.map(item => (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                onClick={onMobileClose}
-                                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all duration-200 font-bold text-xs ${isActive(item.path)
-                                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30'
-                                    : 'text-slate-400 hover:bg-slate-900/80 hover:text-white'
-                                    }`}
-                            >
-                                <span className={isActive(item.path) ? 'text-white' : 'text-slate-400 hover:text-white'}>
-                                    {item.icon}
-                                </span>
-                                <span>{item.name}</span>
-                            </Link>
-                        ))}
-                    </div>
-                )}
+            {/* Navigation Links */}
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+                {navItems.map((item) => (
+                    <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={onMobileClose}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium text-sm ${
+                            isActive(item.path)
+                                ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20 font-bold'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                        <span className={isActive(item.path) ? 'text-white' : 'text-slate-400'}>
+                            {item.icon}
+                        </span>
+                        <span>{item.name}</span>
+                    </Link>
+                ))}
             </nav>
 
             {/* Footer Profile & Logout */}
-            <div className="p-4 m-3 bg-slate-900/90 rounded-3xl border border-slate-800">
+            <div className="p-4 m-3 bg-slate-800/80 rounded-2xl border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-brand-600 to-indigo-600 flex items-center justify-center text-white font-black overflow-hidden shadow-md">
+                    <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold overflow-hidden shadow-sm">
                         {user?.profilePicture ? (
                             <img src={`${import.meta.env.VITE_API_URL}${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
                         ) : (
@@ -273,18 +117,18 @@ const Sidebar = ({ onMobileClose }) => {
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-black text-white truncate leading-tight">{user?.name || 'User'}</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                        <p className="text-xs font-bold text-white truncate leading-tight">{user?.name || 'User'}</p>
+                        <p className="text-[10px] text-slate-400 font-medium capitalize truncate">
                             {user?.role || 'Employee'}
                         </p>
                     </div>
                 </div>
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-rose-500/10 text-rose-400 hover:bg-rose-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest border border-rose-500/20"
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-600 hover:text-white transition-colors text-xs font-semibold"
                 >
                     <LogOut size={14} />
-                    <span>Sign Out</span>
+                    <span>Logout</span>
                 </button>
             </div>
         </div>
