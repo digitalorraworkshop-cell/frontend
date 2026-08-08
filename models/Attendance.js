@@ -55,6 +55,32 @@ const attendanceSchema = mongoose.Schema({
     },
     image: {
         type: String
+    },
+    latitude: {
+        type: Number
+    },
+    longitude: {
+        type: Number
+    },
+    checkInLatitude: {
+        type: Number
+    },
+    checkInLongitude: {
+        type: Number
+    },
+    checkInLocation: {
+        type: String,
+        default: ""
+    },
+    checkOutLatitude: {
+        type: Number
+    },
+    checkOutLongitude: {
+        type: Number
+    },
+    checkOutLocation: {
+        type: String,
+        default: ""
     }
 }, {
     timestamps: true

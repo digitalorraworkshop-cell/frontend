@@ -214,7 +214,15 @@ const getEmployeeLiveStatus = async (req, res) => {
                 ...emp._doc,
                 productivityPercent,
                 totalMinutes: att ? att.totalMinutes : 0,
-                formattedTotalHours: att ? (att.formattedTotalHours || formatMinutesToHHMM(att.totalMinutes)) : "00:00"
+                formattedTotalHours: att ? (att.formattedTotalHours || formatMinutesToHHMM(att.totalMinutes)) : "00:00",
+                latitude: att ? att.latitude : null,
+                longitude: att ? att.longitude : null,
+                checkInLatitude: att ? (att.checkInLatitude || att.latitude) : null,
+                checkInLongitude: att ? (att.checkInLongitude || att.longitude) : null,
+                checkInLocation: att ? att.checkInLocation : "",
+                checkOutLatitude: att ? att.checkOutLatitude : null,
+                checkOutLongitude: att ? att.checkOutLongitude : null,
+                checkOutLocation: att ? att.checkOutLocation : ""
             };
         });
 

@@ -32,11 +32,15 @@ const assignTask = async (req, res) => {
             order: nextOrder
         });
 
-        const io = getIo();
-        io.to(finalAssignedTo.toString()).emit('taskUpdate', { type: 'CREATED', task });
-        io.to('admins').emit('taskUpdate', { type: 'CREATED', task });
+        const populatedTask = await Task.findById(task._id)
+            .populate('assignedTo', 'name email profilePicture')
+            .populate('assignedBy', 'name email role');
 
-        res.status(201).json(task);
+        const io = getIo();
+        io.to(finalAssignedTo.toString()).emit('taskUpdate', { type: 'CREATED', task: populatedTask });
+        io.to('admins').emit('taskUpdate', { type: 'CREATED', task: populatedTask });
+
+        res.status(201).json(populatedTask);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

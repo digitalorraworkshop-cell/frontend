@@ -131,6 +131,8 @@ const chatRoutes = require('./routes/chatRoutes');
 const dailyUpdateRoutes = require('./routes/dailyUpdateRoutes');
 const birthdayRoutes = require('./routes/birthdayRoutes');
 const assetRoutes = require('./routes/assetRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const payrollRoutes = require('./routes/payrollRoutes');
 
 
 // Routes
@@ -146,6 +148,8 @@ app.use('/api/daily-updates', dailyUpdateRoutes);
 app.use('/api/daily_updates', dailyUpdateRoutes); // Alias for reliability
 app.use('/api/birthdays', birthdayRoutes);
 app.use('/api/assets', assetRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 
 app.get('/', (req, res) => {
