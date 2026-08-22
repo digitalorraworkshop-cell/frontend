@@ -8,7 +8,9 @@ import {
     Plus,
     Calendar,
     X,
-    Filter
+    Filter,
+    Play,
+    Square
 } from 'lucide-react';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
@@ -82,6 +84,37 @@ const EmployeeTasks = () => {
             case 'In Progress': return 'bg-blue-50 text-blue-600 border-blue-100';
             default: return 'bg-amber-50 text-amber-600 border-amber-100';
         }
+    };
+
+    const handleStartTracking = async (taskId) => {
+        try {
+            await api.post(`/tasks/${taskId}/start-tracking`);
+            toast.success("Task timer started");
+            fetchTasks();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to start timer");
+        }
+    };
+
+    const handleStopTracking = async (taskId) => {
+        try {
+            await api.post(`/tasks/${taskId}/stop-tracking`);
+            toast.success("Task timer stopped");
+            fetchTasks();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to stop timer");
+        }
+    };
+
+    const formatTimeSpent = (minutes, isTracking, startTime) => {
+        let totalMins = minutes || 0;
+        if (isTracking && startTime) {
+            const elapsedMs = new Date() - new Date(startTime);
+            totalMins += Math.floor(elapsedMs / 60000);
+        }
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        return `${h}h ${m}m`;
     };
 
     const getPriorityStyle = (priority) => {
@@ -169,7 +202,7 @@ const EmployeeTasks = () => {
                             </div>
 
                             <div className="space-y-6 pt-4 border-t border-slate-50">
-                                <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+                                <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-4">
                                     <div className="flex items-center gap-2">
                                         <Calendar size={14} />
                                         <span>{new Date(task.dueDate).toLocaleDateString()}</span>
@@ -177,6 +210,34 @@ const EmployeeTasks = () => {
                                     <span className={`px-3 py-1 rounded-full border ${getStatusStyle(task.status)}`}>
                                         {task.status}
                                     </span>
+                                </div>
+                                
+                                <div className="flex items-center justify-between mb-4 bg-slate-50 p-3 rounded-2xl">
+                                    <div className="flex items-center gap-2">
+                                        <Clock size={16} className={task.isTracking ? "text-brand-600 animate-pulse" : "text-slate-400"} />
+                                        <span className="text-sm font-black text-slate-700">
+                                            {formatTimeSpent(task.timeSpentMinutes, task.isTracking, task.currentTrackingStartTime)}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        {!task.isTracking ? (
+                                            <button 
+                                                onClick={() => handleStartTracking(task._id)}
+                                                className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200 transition-colors"
+                                                title="Start Timer"
+                                            >
+                                                <Play size={14} fill="currentColor" />
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleStopTracking(task._id)}
+                                                className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center hover:bg-rose-200 transition-colors animate-pulse"
+                                                title="Stop Timer"
+                                            >
+                                                <Square size={14} fill="currentColor" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <select

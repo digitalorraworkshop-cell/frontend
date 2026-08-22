@@ -13,11 +13,34 @@ const TrackWidget = () => {
     const [loading, setLoading] = useState(true);
     const [isBreakLoading, setIsBreakLoading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [meetingElapsedSeconds, setMeetingElapsedSeconds] = useState(0);
 
     const timerRef = useRef(null);
     const breakTimerRef = useRef(null);
+    const meetingTimerRef = useRef(null);
     const workStartTimestampRef = useRef(null);
     const breakStartTimestampRef = useRef(null);
+    const meetingStartTimestampRef = useRef(null);
+
+    const playBeep = () => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.start();
+            setTimeout(() => {
+                osc.stop();
+                ctx.close();
+            }, 300);
+        } catch (e) {
+            console.error('Audio beep failed', e);
+        }
+    };
 
     const fetchSync = async () => {
         try {
@@ -25,7 +48,8 @@ const TrackWidget = () => {
             const data = res.data;
             setAttendance(data);
 
-            const isOnBreak = data.onBreak;
+            const isOnBreak = data.onBreak || data.status === 'On Break';
+            const isInMeeting = !!data.meetingStartTime;
 
             if (data.working && data.checkInTime) {
                 let initialWorkSecs = 0;
@@ -40,6 +64,17 @@ const TrackWidget = () => {
                 if (!isOnBreak) {
                     startEngine(initialWorkSecs);
                     stopBreakEngine();
+                    
+                    if (isInMeeting) {
+                        let initialMeetingSecs = 0;
+                        if (data.meetingStartTime) {
+                            const meetingElapsed = Math.floor((new Date() - new Date(data.meetingStartTime)) / 1000);
+                            initialMeetingSecs = meetingElapsed > 0 ? meetingElapsed : 0;
+                        }
+                        startMeetingEngine(initialMeetingSecs);
+                    } else {
+                        stopMeetingEngine();
+                    }
                 } else {
                     // On break — start break timer from breakStartTime
                     stopEngine();
@@ -59,6 +94,7 @@ const TrackWidget = () => {
             } else {
                 stopEngine();
                 stopBreakEngine();
+                stopMeetingEngine();
                 const totalSecs = data.activeWorkingSeconds !== undefined ? data.activeWorkingSeconds : (data.totalMinutes || 0) * 60;
                 setElapsedSeconds(totalSecs);
                 if (window.electron) window.electron.send('stop-monitoring');
@@ -139,6 +175,7 @@ const TrackWidget = () => {
             if (hb) clearInterval(hb);
             stopEngine();
             stopBreakEngine();
+            stopMeetingEngine();
         };
     }, []);
 
@@ -185,12 +222,35 @@ const TrackWidget = () => {
         setBreakElapsedSeconds(0);
     };
 
+    const startMeetingEngine = (initialMeetingSecs) => {
+        if (meetingTimerRef.current) clearInterval(meetingTimerRef.current);
+        if (initialMeetingSecs !== undefined) {
+            meetingStartTimestampRef.current = Date.now() - (initialMeetingSecs * 1000);
+        }
+
+        const tickMeeting = () => {
+            if (meetingStartTimestampRef.current) {
+                const sec = Math.max(0, Math.floor((Date.now() - meetingStartTimestampRef.current) / 1000));
+                setMeetingElapsedSeconds(sec);
+            }
+        };
+
+        tickMeeting();
+        meetingTimerRef.current = setInterval(tickMeeting, 1000);
+    };
+
+    const stopMeetingEngine = () => {
+        if (meetingTimerRef.current) clearInterval(meetingTimerRef.current);
+        setMeetingElapsedSeconds(0);
+    };
+
     const handleCheckIn = async () => {
         setIsRefreshing(true);
         try {
             const coords = await getCoordinates();
 
             await api.post('/attendance/check-in', coords);
+            playBeep();
             toast.success('Check-in Successful');
             await fetchSync();
             if (window.electron) {
@@ -212,8 +272,10 @@ const TrackWidget = () => {
             const coords = await getCoordinates();
 
             await api.post('/attendance/checkout', coords);
+            playBeep();
             toast.success('Check-out Successful');
             stopBreakEngine();
+            stopMeetingEngine();
             await fetchSync();
             if (window.electron) window.electron.send('stop-monitoring');
         } catch (err) {
@@ -227,6 +289,7 @@ const TrackWidget = () => {
         setIsBreakLoading(true);
         try {
             await api.post('/attendance/break-start');
+            playBeep();
             toast.success('Break started — timer paused');
             stopEngine();
             setBreakElapsedSeconds(0);
@@ -243,6 +306,7 @@ const TrackWidget = () => {
         setIsBreakLoading(true);
         try {
             await api.post('/attendance/break-end');
+            playBeep();
             toast.success('Break ended — back to work!');
             stopBreakEngine();
             const res = await api.get('/attendance/today');
@@ -252,6 +316,39 @@ const TrackWidget = () => {
             toast.error(err.response?.data?.message || 'Could not end break');
         } finally {
             setIsBreakLoading(false);
+        }
+    };
+    const handleMeetingStart = async () => {
+        setIsRefreshing(true);
+        try {
+            await api.post('/attendance/meeting-start');
+            playBeep();
+            toast.success('Meeting started');
+            stopEngine();
+            setMeetingElapsedSeconds(0);
+            startMeetingEngine(0);
+            setAttendance(prev => ({ ...prev, meetingStartTime: new Date().toISOString(), status: 'In Meeting' }));
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Could not start meeting');
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const handleMeetingEnd = async () => {
+        setIsRefreshing(true);
+        try {
+            await api.post('/attendance/meeting-end');
+            playBeep();
+            toast.success('Meeting ended');
+            stopMeetingEngine();
+            const res = await api.get('/attendance/today');
+            setAttendance(res.data);
+            startEngine(res.data.activeWorkingSeconds || 0);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Could not end meeting');
+        } finally {
+            setIsRefreshing(false);
         }
     };
 
@@ -269,7 +366,8 @@ const TrackWidget = () => {
     };
 
     const isWorking = attendance?.working;
-    const isOnBreak = attendance?.onBreak;
+    const isOnBreak = attendance?.onBreak || attendance?.status === 'On Break';
+    const isInMeeting = !!attendance?.meetingStartTime;
 
     return (
         <div className="bg-white p-10 rounded-[40px] shadow-2xl shadow-slate-200/50 border border-slate-50 flex flex-col items-center relative overflow-hidden group">
@@ -288,10 +386,11 @@ const TrackWidget = () => {
                 {isWorking && (
                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${isOnBreak
                         ? 'bg-amber-50 text-amber-600'
+                        : isInMeeting ? 'bg-indigo-50 text-indigo-600'
                         : 'bg-emerald-50 text-emerald-600'
                         }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOnBreak ? 'bg-amber-500' : 'bg-emerald-600'}`}></span>
-                        {isOnBreak ? 'On Break' : 'Working'}
+                        <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOnBreak ? 'bg-amber-500' : isInMeeting ? 'bg-indigo-500' : 'bg-emerald-600'}`}></span>
+                        {isOnBreak ? 'On Break' : isInMeeting ? 'In Meeting' : 'Working'}
                     </div>
                 )}
             </div>
@@ -306,11 +405,21 @@ const TrackWidget = () => {
                 </div>
             </div>
 
-            {/* Break Timer (only shown when on break) */}
-            {isOnBreak && (
-                <div className="mb-6 px-4 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2 text-amber-700">
-                    <Coffee size={14} className="animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-widest">Break: {formatLong(breakElapsedSeconds)}</span>
+            {/* Break / Meeting Timers */}
+            {(isOnBreak || isInMeeting) && (
+                <div className="mb-6 flex gap-3">
+                    {isOnBreak && (
+                        <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2 text-amber-700">
+                            <Coffee size={14} className="animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-widest">Break: {formatLong(breakElapsedSeconds)}</span>
+                        </div>
+                    )}
+                    {isInMeeting && (
+                        <div className="px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-2 text-indigo-700">
+                            <Zap size={14} className="animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-widest">Meeting: {formatLong(meetingElapsedSeconds)}</span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -332,7 +441,7 @@ const TrackWidget = () => {
                     </button>
                 ) : (
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-2">
                             {/* On Break / Resume Button */}
                             {!isOnBreak ? (
                                 <button
@@ -354,23 +463,45 @@ const TrackWidget = () => {
                                 </button>
                             )}
 
+                            {/* Meeting Button */}
+                            {!isInMeeting ? (
+                                <button
+                                    onClick={handleMeetingStart}
+                                    disabled={isRefreshing || isOnBreak}
+                                    className={`h-24 rounded-[32px] border flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer ${isOnBreak ? 'bg-slate-50 border-slate-100 text-slate-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:-translate-y-0.5 active:scale-95'}`}
+                                >
+                                    <Zap size={22} />
+                                    <span className="text-[10px] uppercase tracking-widest font-bold">Meeting</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleMeetingEnd}
+                                    disabled={isRefreshing}
+                                    className="h-24 rounded-[32px] bg-indigo-100 border border-indigo-300 text-indigo-800 flex flex-col items-center justify-center gap-2 hover:bg-indigo-200 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
+                                >
+                                    <RotateCcw size={22} />
+                                    <span className="text-[10px] uppercase tracking-widest font-bold">End Meet</span>
+                                </button>
+                            )}
+
                             {/* Tracking Live indicator */}
                             <div className={`h-24 rounded-[32px] border flex flex-col items-center justify-center gap-2 ${isOnBreak
                                 ? 'bg-slate-50 border-slate-100 text-slate-400 opacity-50'
+                                : isInMeeting ? 'bg-indigo-50 border-indigo-100 text-indigo-700'
                                 : 'bg-brand-50 border-brand-100 text-brand-700'
                                 }`}>
-                                <Zap size={24} className={!isOnBreak ? 'animate-pulse' : ''} />
-                                <span className="text-[10px] uppercase tracking-widest font-black">
-                                    {isOnBreak ? 'Paused' : 'Tracking Live'}
+                                <Clock size={24} className={!isOnBreak ? 'animate-pulse' : ''} />
+                                <span className="text-[10px] uppercase tracking-widest font-black text-center leading-tight">
+                                    {isOnBreak ? 'Paused' : isInMeeting ? 'Live Meet' : 'Live'}
                                 </span>
                             </div>
                         </div>
 
                         <button
                             onClick={handleCheckOut}
-                            disabled={loading || isRefreshing || isOnBreak}
-                            title={isOnBreak ? 'End your break before checking out' : ''}
-                            className={`w-full h-20 rounded-[28px] font-black text-xl transition-all duration-300 flex items-center justify-center gap-4 group ${isOnBreak
+                            disabled={loading || isRefreshing || isOnBreak || isInMeeting}
+                            title={isOnBreak ? 'End your break before checking out' : isInMeeting ? 'End meeting before checking out' : ''}
+                            className={`w-full h-20 rounded-[28px] font-black text-xl transition-all duration-300 flex items-center justify-center gap-4 group ${(isOnBreak || isInMeeting)
                                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                 : 'bg-slate-900 text-white hover:shadow-2xl hover:shadow-slate-900/40 hover:-translate-y-1 active:scale-95'
                                 }`}

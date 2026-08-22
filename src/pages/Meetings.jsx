@@ -13,6 +13,7 @@ import {
     Building,
     CheckCircle2,
     XCircle,
+    X,
     Copy,
     ExternalLink,
     ChevronRight,
@@ -56,6 +57,9 @@ const Meetings = () => {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [selectedMeetingId, setSelectedMeetingId] = useState(null);
     const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
+
+    // In-App Meeting State
+    const [activeMeetingLink, setActiveMeetingLink] = useState(null);
 
     useEffect(() => {
         fetchMeetings();
@@ -132,6 +136,23 @@ const Meetings = () => {
         } else {
             toast.error('No meeting link available');
         }
+    };
+
+    const handleJoinMeeting = (e, m) => {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        let link = m.meetingLink;
+        if (!link) return;
+
+        // Force all Google Meet links (including previously generated ones) to open as in-app Jitsi meetings
+        if (link.includes('meet.google.com/')) {
+            const code = link.split('meet.google.com/')[1].split('?')[0];
+            link = `https://meet.jit.si/Tracker_${code.replace(/-/g, '')}`;
+        }
+
+        // Always open in the app
+        setActiveMeetingLink(link);
     };
 
     const handleSearchSubmit = (e) => {
@@ -346,15 +367,12 @@ const Meetings = () => {
 
                                         <div className="flex items-center gap-2">
                                             {m.meetingLink && (
-                                                <a
-                                                    href={m.meetingLink}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
+                                                <button
+                                                    onClick={(e) => handleJoinMeeting(e, m)}
                                                     className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-brand-600/20 active:scale-95"
                                                 >
-                                                    <Video size={14} /> JOIN MEET
-                                                </a>
+                                                    <Video size={14} /> JOIN
+                                                </button>
                                             )}
                                             <button
                                                 onClick={() => handleOpenDetails(m._id)}
@@ -481,15 +499,12 @@ const Meetings = () => {
                                         {/* Action Buttons */}
                                         <div className="flex items-center gap-2">
                                             {m.meetingLink && m.status !== 'Cancelled' && (
-                                                <a
-                                                    href={m.meetingLink}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
+                                                <button
+                                                    onClick={(e) => handleJoinMeeting(e, m)}
                                                     className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-brand-600/20 active:scale-95"
                                                 >
                                                     <Video size={14} /> JOIN
-                                                </a>
+                                                </button>
                                             )}
 
                                             <button
@@ -529,7 +544,11 @@ const Meetings = () => {
             <MeetingDetailsModal
                 isOpen={isDetailsOpen}
                 meetingId={selectedMeetingId}
-                onClose={() => setIsDetailsOpen(false)}
+                onJoinMeeting={handleJoinMeeting}
+                onClose={() => {
+                    setIsDetailsOpen(false);
+                    setSelectedMeetingId(null);
+                }}
                 onMeetingUpdated={() => {
                     fetchMeetings();
                     fetchStats();
@@ -540,11 +559,42 @@ const Meetings = () => {
             <GoogleConnectModal
                 isOpen={isGoogleModalOpen}
                 onClose={() => setIsGoogleModalOpen(false)}
-                onUpdated={() => {
-                    fetchMeetings();
-                    fetchStats();
+                onConnected={() => {
+                    toast.success('Google Calendar connected successfully!');
+                    setIsGoogleModalOpen(false);
                 }}
             />
+
+            {/* In-App Meeting Overlay */}
+            {activeMeetingLink && (
+                <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between p-3 bg-slate-900 border-b border-slate-800 shrink-0">
+                        <div className="flex items-center gap-3 text-white">
+                            <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-600/20">
+                                <Video size={18} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-sm tracking-wide">Secure In-App Video Call</h3>
+                                <p className="text-[10px] text-slate-400 font-medium">Powered by Jitsi Meet (End-to-End Encrypted)</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setActiveMeetingLink(null)}
+                            className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-rose-600/20 flex items-center gap-2 active:scale-95"
+                        >
+                            <X size={16} strokeWidth={3} /> Leave Call
+                        </button>
+                    </div>
+                    <div className="flex-1 bg-[#1c1d22] relative">
+                        <iframe 
+                            src={`${activeMeetingLink}#config.prejoinPageEnabled=false&userInfo.displayName="${encodeURIComponent(user?.name || '')}"`}
+                            allow="camera; microphone; display-capture; autoplay; clipboard-write"
+                            className="w-full h-full border-0 absolute inset-0"
+                            title="Meeting Room"
+                        ></iframe>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

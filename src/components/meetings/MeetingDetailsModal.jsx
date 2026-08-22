@@ -28,7 +28,7 @@ import {
     Shield
 } from 'lucide-react';
 
-const MeetingDetailsModal = ({ isOpen, onClose, meetingId, onMeetingUpdated }) => {
+const MeetingDetailsModal = ({ isOpen, onClose, meetingId, onMeetingUpdated, onJoinMeeting }) => {
     const { user } = useContext(AuthContext);
     const [meeting, setMeeting] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -241,15 +241,20 @@ const MeetingDetailsModal = ({ isOpen, onClose, meetingId, onMeetingUpdated }) =
                                     </button>
 
                                     {meeting?.meetingLink ? (
-                                        <a
-                                            href={meeting.meetingLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="px-6 py-2.5 bg-white text-brand-700 hover:bg-brand-50 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 active:scale-95"
+                                        <button
+                                            onClick={(e) => {
+                                                if (onJoinMeeting) {
+                                                    onJoinMeeting(e, meeting);
+                                                    onClose();
+                                                } else {
+                                                    window.open(meeting.meetingLink, '_blank');
+                                                }
+                                            }}
+                                            className="w-full sm:w-auto px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30 transition-all active:scale-95"
                                         >
-                                            <Video size={16} className="text-brand-600" />
-                                            JOIN GOOGLE MEET →
-                                        </a>
+                                            <Video size={16} className="text-white" />
+                                            JOIN MEETING →
+                                        </button>
                                     ) : (
                                         <span className="text-xs text-brand-200 font-bold">Meeting in Physical Room</span>
                                     )}

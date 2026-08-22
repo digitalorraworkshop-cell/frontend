@@ -311,6 +311,7 @@ const AdminAttendance = () => {
                                     <th className="px-6 py-6">Check In</th>
                                     <th className="px-6 py-6">Check Out</th>
                                     <th className="px-6 py-6">Break (Mins)</th>
+                                    <th className="px-6 py-6">Work Hours</th>
                                     <th className="px-6 py-6">Status</th>
                                     <th className="px-6 py-6 w-48">Remarks</th>
                                 </tr>
