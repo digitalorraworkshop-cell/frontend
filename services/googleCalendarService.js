@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const axios = require('axios');
 const GoogleIntegration = require('../models/GoogleIntegration');
 
 class GoogleCalendarService {
@@ -60,21 +59,32 @@ class GoogleCalendarService {
             grant_type: 'authorization_code'
         };
 
-        const response = await axios.post(url, new URLSearchParams(values), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(values).toString()
         });
 
-        const { access_token, refresh_token, expires_in } = response.data;
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error_description || errData.error || `Token exchange failed: HTTP ${response.status}`);
+        }
+
+        const tokenData = await response.json();
+        const { access_token, refresh_token, expires_in } = tokenData;
 
         // Fetch User Profile
         let userEmail = '';
         let userName = '';
         try {
-            const profileRes = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
                 headers: { Authorization: `Bearer ${access_token}` }
             });
-            userEmail = profileRes.data.email || '';
-            userName = profileRes.data.name || '';
+            if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                userEmail = profileData.email || '';
+                userName = profileData.name || '';
+            }
         } catch (e) {
             console.warn('[GOOGLE-PROFILE-FETCH-WARN]', e.message);
         }
@@ -112,20 +122,29 @@ class GoogleCalendarService {
         // Refresh token if expired
         if (integration.refreshToken && this.isGoogleConfigured()) {
             try {
-                const response = await axios.post('https://oauth2.googleapis.com/token', new URLSearchParams({
-                    client_id: this.clientId,
-                    client_secret: this.clientSecret,
-                    refresh_token: integration.refreshToken,
-                    grant_type: 'refresh_token'
-                }), {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                const response = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_id: this.clientId,
+                        client_secret: this.clientSecret,
+                        refresh_token: integration.refreshToken,
+                        grant_type: 'refresh_token'
+                    }).toString()
                 });
 
-                const { access_token, expires_in } = response.data;
-                integration.accessToken = access_token;
-                integration.tokenExpiryDate = new Date(Date.now() + (expires_in * 1000));
-                await integration.save();
-                return access_token;
+                if (response.ok) {
+                    const data = await response.json();
+                    const { access_token, expires_in } = data;
+                    integration.accessToken = access_token;
+                    integration.tokenExpiryDate = new Date(Date.now() + (expires_in * 1000));
+                    await integration.save();
+                    return access_token;
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    console.error('[GOOGLE-REFRESH-TOKEN-FAIL]', errData);
+                    return null;
+                }
             } catch (err) {
                 console.error('[GOOGLE-REFRESH-TOKEN-FAIL]', err.message);
                 return null;
@@ -180,25 +199,36 @@ class GoogleCalendarService {
                     }
                 };
 
-                const response = await axios.post(
+                const response = await fetch(
                     'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
-                    eventPayload,
-                    { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(eventPayload)
+                    }
                 );
 
-                const event = response.data;
-                const meetLink = event.conferenceData?.entryPoints?.find(ep => ep.entryPointType === 'video')?.uri 
-                    || event.hangoutLink 
-                    || `https://meet.google.com/${this.generateSecureMeetRoomCode()}`;
+                if (response.ok) {
+                    const event = await response.json();
+                    const meetLink = event.conferenceData?.entryPoints?.find(ep => ep.entryPointType === 'video')?.uri 
+                        || event.hangoutLink 
+                        || `https://meet.google.com/${this.generateSecureMeetRoomCode()}`;
 
-                return {
-                    success: true,
-                    googleEventId: event.id,
-                    meetingLink: meetLink,
-                    isRealGoogleEvent: true
-                };
+                    return {
+                        success: true,
+                        googleEventId: event.id,
+                        meetingLink: meetLink,
+                        isRealGoogleEvent: true
+                    };
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    console.error('[GOOGLE-CALENDAR-API-ERROR]', errData);
+                }
             } catch (error) {
-                console.error('[GOOGLE-CALENDAR-API-ERROR]', error.response?.data || error.message);
+                console.error('[GOOGLE-CALENDAR-API-ERROR]', error.message);
             }
         }
 

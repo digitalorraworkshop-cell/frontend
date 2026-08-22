@@ -114,7 +114,7 @@ const meetingSchema = mongoose.Schema({
     },
     platform: {
         type: String,
-        enum: ['Google Meet', 'Microsoft Teams', 'Zoom', 'Custom Meeting Link', 'In-Person / Physical Location'],
+        enum: ['Google Meet', 'Microsoft Teams', 'Zoom', 'Custom Meeting Link', 'In-Person / Physical Location', 'In-App Meeting', 'In-App Video Call'],
         default: 'Google Meet'
     },
     meetingLink: {

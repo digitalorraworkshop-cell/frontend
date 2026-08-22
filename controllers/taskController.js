@@ -212,4 +212,57 @@ const deleteTask = async (req, res) => {
     }
 };
 
-module.exports = { assignTask, getTasks, updateTask, deleteTask, reorderTasks };
+// @desc    Start Tracking Task
+// @route   POST /api/tasks/:id/start-tracking
+// @access  Private
+const startTrackingTask = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) return res.status(404).json({ message: 'Task not found' });
+        
+        const assigneeId = task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString();
+        if (assigneeId !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to track this task' });
+        }
+        
+        task.isTracking = true;
+        task.currentTrackingStartTime = new Date();
+        await task.save();
+        
+        res.json(task);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Stop Tracking Task
+// @route   POST /api/tasks/:id/stop-tracking
+// @access  Private
+const stopTrackingTask = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        if (!task) return res.status(404).json({ message: 'Task not found' });
+        
+        const assigneeId = task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString();
+        if (assigneeId !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to track this task' });
+        }
+        
+        if (task.isTracking && task.currentTrackingStartTime) {
+            const elapsedMs = new Date() - new Date(task.currentTrackingStartTime);
+            const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
+            task.timeSpentMinutes = (task.timeSpentMinutes || 0) + elapsedMins;
+        }
+        
+        task.isTracking = false;
+        task.currentTrackingStartTime = null;
+        await task.save();
+        
+        res.json(task);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { assignTask, getTasks, updateTask, deleteTask, reorderTasks, startTrackingTask, stopTrackingTask };
+

@@ -114,6 +114,9 @@ const createMeeting = async (req, res) => {
             if (meetingLink && meetingLink.includes('meet.google.com/')) {
                 googleMeetCode = meetingLink.split('meet.google.com/')[1];
             }
+        } else if (selectedPlatform === 'In-App Meeting') {
+            const uniqueCode = Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+            meetingLink = `https://meet.jit.si/Tracker_${uniqueCode}`;
         } else if (selectedPlatform === 'Microsoft Teams') {
             meetingLink = customLink || 'https://teams.microsoft.com/l/meetup-join/enterprise-crm';
         } else if (selectedPlatform === 'Zoom') {

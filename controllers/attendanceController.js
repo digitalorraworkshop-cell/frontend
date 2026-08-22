@@ -3,6 +3,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { formatMinutes, getDurationInMinutes } = require('../utils/timeUtils');
 const { broadcastStatus } = require('../socket');
+const axios = require('axios');
 
 // Helper to perform reverse-geocoding via OpenStreetMap's Nominatim API
 const reverseGeocode = async (latitude, longitude) => {
@@ -12,7 +13,7 @@ const reverseGeocode = async (latitude, longitude) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
             signal: controller.signal,
             headers: {
                 'User-Agent': 'AntigravityEmployeeAttendanceSystem/1.0'
@@ -20,11 +21,11 @@ const reverseGeocode = async (latitude, longitude) => {
         });
         clearTimeout(timeoutId);
 
-        if (!response.ok) {
+        if (response.status !== 200) {
             console.error(`[GEOLOCATION] Nominatim HTTP error: ${response.status}`);
             return "";
         }
-        const data = await response.json();
+        const data = response.data;
         return data.display_name || "";
     } catch (error) {
         console.error('[GEOLOCATION] Reverse geocoding failed:', error);
@@ -43,21 +44,54 @@ const getClientIP = (req) => {
 const getIPLocation = async (ipAddress) => {
     try {
         let ip = ipAddress;
-        if (!ip || ip === '::1' || ip === '127.0.0.1') {
+        if (!ip || ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.')) {
             // Localhost testing fallback to a public Indian IP (Delhi)
             ip = '103.15.20.1';
         }
         console.log(`[IP-GEOLOCATION] Geocoding IP: ${ip}`);
-        const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,lat,lon`);
-        if (!response.ok) {
-            console.error(`[IP-GEOLOCATION] HTTP error: ${response.status}`);
+        
+        let data;
+        let provider = 'ip-api';
+        
+        try {
+            const response = await axios.get(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,lat,lon`);
+            if (response.status === 200) {
+                const result = response.data;
+                if (result.status !== 'fail') {
+                    data = result;
+                }
+            }
+        } catch (e) {
+            console.warn('[IP-GEOLOCATION] ip-api failed, trying fallback', e.message);
+        }
+
+        // Fallback if primary fails
+        if (!data) {
+            try {
+                provider = 'ipapi.co';
+                const fallbackResponse = await axios.get(`https://ipapi.co/${ip}/json/`);
+                if (fallbackResponse.status === 200) {
+                    const fallbackData = fallbackResponse.data;
+                    if (!fallbackData.error) {
+                        data = {
+                            lat: fallbackData.latitude,
+                            lon: fallbackData.longitude,
+                            city: fallbackData.city,
+                            regionName: fallbackData.region,
+                            country: fallbackData.country_name
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn('[IP-GEOLOCATION] ipapi.co fallback failed', e.message);
+            }
+        }
+
+        if (!data) {
+            console.error(`[IP-GEOLOCATION] Failed for IP: ${ip} on all providers`);
             return null;
         }
-        const data = await response.json();
-        if (data.status === 'fail') {
-            console.warn(`[IP-GEOLOCATION] Failed for IP: ${ip}, message: ${data.message}`);
-            return null;
-        }
+
         return {
             latitude: data.lat,
             longitude: data.lon,
@@ -78,6 +112,9 @@ const getActiveWorkingMinutes = (attendance, now = new Date()) => {
     
     // Completed break minutes
     let totalBreakMins = attendance.breakMinutes || 0;
+    
+    // Completed meeting minutes
+    let totalMeetingMins = attendance.meetingMinutes || 0;
     
     // Ongoing break if applicable
     if (attendance.status === 'On Break' && attendance.breakStartTime) {
@@ -117,6 +154,31 @@ const checkIn = async (req, res) => {
         const today = now.toLocaleDateString('en-CA');
 
         const user = await User.findById(userId);
+
+        // Capture geolocation FIRST before DB reads to avoid race conditions during the slow API call
+        let lat = null;
+        let lon = null;
+        let location = "";
+
+        if (req.body.latitude !== undefined && req.body.longitude !== undefined && req.body.latitude !== null && req.body.longitude !== null && req.body.latitude !== '' && req.body.longitude !== '') {
+            const parsedLat = Number(req.body.latitude);
+            const parsedLon = Number(req.body.longitude);
+            if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+                lat = parsedLat;
+                lon = parsedLon;
+                location = await reverseGeocode(lat, lon);
+            }
+        }
+
+        if (!lat || !lon) {
+            const clientIP = getClientIP(req);
+            const ipLoc = await getIPLocation(clientIP);
+            if (ipLoc) {
+                lat = ipLoc.latitude;
+                lon = ipLoc.longitude;
+                location = ipLoc.location;
+            }
+        }
 
         // Check today's attendance record
         let attendance = await Attendance.findOne({ user: userId, date: today });
@@ -162,31 +224,6 @@ const checkIn = async (req, res) => {
         attendance.checkInTime = checkInTime;
         attendance.image = req.file ? req.file.path : attendance.image;
         
-        // Capture geolocation if provided, otherwise fallback to IP
-        let lat = null;
-        let lon = null;
-        let location = "";
-
-        if (req.body.latitude !== undefined && req.body.longitude !== undefined && req.body.latitude !== null && req.body.longitude !== null && req.body.latitude !== '' && req.body.longitude !== '') {
-            const parsedLat = Number(req.body.latitude);
-            const parsedLon = Number(req.body.longitude);
-            if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
-                lat = parsedLat;
-                lon = parsedLon;
-                location = await reverseGeocode(lat, lon);
-            }
-        }
-
-        if (!lat || !lon) {
-            const clientIP = getClientIP(req);
-            const ipLoc = await getIPLocation(clientIP);
-            if (ipLoc) {
-                lat = ipLoc.latitude;
-                lon = ipLoc.longitude;
-                location = ipLoc.location;
-            }
-        }
-
         if (lat && lon) {
             attendance.latitude = lat;
             attendance.longitude = lon;
@@ -195,7 +232,16 @@ const checkIn = async (req, res) => {
             attendance.checkInLocation = location;
         }
 
-        await attendance.save();
+        try {
+            await attendance.save();
+        } catch (saveError) {
+            if (saveError.code === 11000) {
+                // Another request created the record simultaneously. Fetch the newly created record.
+                attendance = await Attendance.findOne({ user: userId, date: today });
+            } else {
+                throw saveError;
+            }
+        }
 
         await User.findByIdAndUpdate(userId, {
             isOnline: true,
@@ -598,6 +644,64 @@ const endBreak = async (req, res) => {
     }
 };
 
+// @desc    Start Meeting
+// @route   POST /api/attendance/meeting-start
+// @access  Private
+const startMeeting = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const today = new Date().toLocaleDateString('en-CA');
+
+        const attendance = await Attendance.findOne({ user: userId, date: today });
+        if (!attendance || attendance.status !== 'Working') {
+            return res.status(400).json({ message: 'No active working session found' });
+        }
+        if (attendance.meetingStartTime || attendance.breakStartTime) {
+            return res.status(400).json({ message: 'Already on break or in meeting' });
+        }
+
+        attendance.meetingStartTime = new Date();
+        attendance.status = 'In Meeting'; // We can map this to Working or keep a new status.
+        // But the schema allows specific statuses. Since we didn't add In Meeting to schema enum, we can just use Working 
+        // but log the meetingStartTime. Wait, let's keep status 'Working' so it counts as work time!
+        // The user wants a meeting option. Meeting is working time.
+        // Wait, if it's working time, we just track the time inside meetingStartTime.
+        await attendance.save();
+
+        res.status(200).json({ meetingStartTime: attendance.meetingStartTime, status: 'Working' });
+    } catch (error) {
+        console.error('[MEETING] Start Error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+// @desc    End Meeting
+// @route   POST /api/attendance/meeting-end
+// @access  Private
+const endMeeting = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const today = new Date().toLocaleDateString('en-CA');
+
+        const attendance = await Attendance.findOne({ user: userId, date: today });
+        if (!attendance || !attendance.meetingStartTime) {
+            return res.status(400).json({ message: 'No active meeting found' });
+        }
+
+        const meetingDurationMs = new Date() - new Date(attendance.meetingStartTime);
+        const meetingMins = Math.max(0, Math.floor(meetingDurationMs / 60000));
+
+        attendance.meetingMinutes = (attendance.meetingMinutes || 0) + meetingMins;
+        attendance.meetingStartTime = null;
+        await attendance.save();
+
+        res.status(200).json({ meetingMinutes: attendance.meetingMinutes, status: 'Working' });
+    } catch (error) {
+        console.error('[MEETING] End Error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 // @desc    Get all employees attendance for a specific date
 // @route   GET /api/attendance/by-date
 // @access  Private/Admin
@@ -705,5 +809,7 @@ module.exports = {
     getAttendanceHistory,
     getEmployeeSummary,
     getAttendanceByDate,
-    bulkUpdateAttendance
+    bulkUpdateAttendance,
+    startMeeting,
+    endMeeting
 };

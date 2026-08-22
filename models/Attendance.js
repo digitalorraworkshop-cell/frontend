@@ -53,6 +53,14 @@ const attendanceSchema = mongoose.Schema({
         type: Date,
         default: null
     },
+    meetingMinutes: {
+        type: Number,
+        default: 0
+    },
+    meetingStartTime: {
+        type: Date,
+        default: null
+    },
     image: {
         type: String
     },
