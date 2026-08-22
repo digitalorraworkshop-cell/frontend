@@ -23,7 +23,6 @@ const userSchema = mongoose.Schema({
     },
     currentSessionId: { type: String },
     lastActiveAt: { type: Date, default: Date.now },
-    socketId: { type: String },
     // For Employees
     department: { type: String },
     joiningDate: { type: Date, default: Date.now },

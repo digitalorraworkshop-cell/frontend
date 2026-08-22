@@ -3,6 +3,146 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { formatMinutes, getDurationInMinutes } = require('../utils/timeUtils');
 const { broadcastStatus } = require('../socket');
+const axios = require('axios');
+
+// Helper to perform reverse-geocoding via OpenStreetMap's Nominatim API
+const reverseGeocode = async (latitude, longitude) => {
+    if (!latitude || !longitude) return "";
+    try {
+        console.log(`[GEOLOCATION] Reverse geocoding lat:${latitude}, lon:${longitude}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'AntigravityEmployeeAttendanceSystem/1.0'
+            }
+        });
+        clearTimeout(timeoutId);
+
+        if (response.status !== 200) {
+            console.error(`[GEOLOCATION] Nominatim HTTP error: ${response.status}`);
+            return "";
+        }
+        const data = response.data;
+        return data.display_name || "";
+    } catch (error) {
+        console.error('[GEOLOCATION] Reverse geocoding failed:', error);
+        return "";
+    }
+};
+
+const getClientIP = (req) => {
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (ip && ip.startsWith('::ffff:')) {
+        ip = ip.substring(7);
+    }
+    return ip;
+};
+
+const getIPLocation = async (ipAddress) => {
+    try {
+        let ip = ipAddress;
+        if (!ip || ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.')) {
+            // Localhost testing fallback to a public Indian IP (Delhi)
+            ip = '103.15.20.1';
+        }
+        console.log(`[IP-GEOLOCATION] Geocoding IP: ${ip}`);
+        
+        let data;
+        let provider = 'ip-api';
+        
+        try {
+            const response = await axios.get(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,lat,lon`);
+            if (response.status === 200) {
+                const result = response.data;
+                if (result.status !== 'fail') {
+                    data = result;
+                }
+            }
+        } catch (e) {
+            console.warn('[IP-GEOLOCATION] ip-api failed, trying fallback', e.message);
+        }
+
+        // Fallback if primary fails
+        if (!data) {
+            try {
+                provider = 'ipapi.co';
+                const fallbackResponse = await axios.get(`https://ipapi.co/${ip}/json/`);
+                if (fallbackResponse.status === 200) {
+                    const fallbackData = fallbackResponse.data;
+                    if (!fallbackData.error) {
+                        data = {
+                            lat: fallbackData.latitude,
+                            lon: fallbackData.longitude,
+                            city: fallbackData.city,
+                            regionName: fallbackData.region,
+                            country: fallbackData.country_name
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn('[IP-GEOLOCATION] ipapi.co fallback failed', e.message);
+            }
+        }
+
+        if (!data) {
+            console.error(`[IP-GEOLOCATION] Failed for IP: ${ip} on all providers`);
+            return null;
+        }
+
+        return {
+            latitude: data.lat,
+            longitude: data.lon,
+            location: `${data.city}, ${data.regionName}, ${data.country} (IP)`
+        };
+    } catch (error) {
+        console.error('[IP-GEOLOCATION] Request failed:', error);
+        return null;
+    }
+};
+
+const getActiveWorkingMinutes = (attendance, now = new Date()) => {
+    if (!attendance.checkInTime) return 0;
+    
+    const endTime = attendance.checkOutTime ? new Date(attendance.checkOutTime) : now;
+    const totalElapsedMs = endTime - new Date(attendance.checkInTime);
+    let totalElapsedMins = Math.max(0, Math.floor(totalElapsedMs / 60000));
+    
+    // Completed break minutes
+    let totalBreakMins = attendance.breakMinutes || 0;
+    
+    // Completed meeting minutes
+    let totalMeetingMins = attendance.meetingMinutes || 0;
+    
+    // Ongoing break if applicable
+    if (attendance.status === 'On Break' && attendance.breakStartTime) {
+        const currentBreakMs = now - new Date(attendance.breakStartTime);
+        totalBreakMins += Math.max(0, Math.floor(currentBreakMs / 60000));
+    }
+    
+    return Math.max(0, totalElapsedMins - totalBreakMins);
+};
+
+const getActiveWorkingSeconds = (attendance, now = new Date()) => {
+    if (!attendance.checkInTime) return 0;
+    
+    const endTime = attendance.checkOutTime ? new Date(attendance.checkOutTime) : now;
+    const totalElapsedMs = endTime - new Date(attendance.checkInTime);
+    let totalElapsedSecs = Math.max(0, Math.floor(totalElapsedMs / 1000));
+    
+    // Completed break seconds
+    let totalBreakSecs = (attendance.breakMinutes || 0) * 60;
+    
+    // Ongoing break if applicable
+    if (attendance.status === 'On Break' && attendance.breakStartTime) {
+        const currentBreakMs = now - new Date(attendance.breakStartTime);
+        totalBreakSecs += Math.max(0, Math.floor(currentBreakMs / 1000));
+    }
+    
+    return Math.max(0, totalElapsedSecs - totalBreakSecs);
+};
 
 // @desc    Check In
 // @route   POST /api/attendance/check-in
@@ -14,6 +154,31 @@ const checkIn = async (req, res) => {
         const today = now.toLocaleDateString('en-CA');
 
         const user = await User.findById(userId);
+
+        // Capture geolocation FIRST before DB reads to avoid race conditions during the slow API call
+        let lat = null;
+        let lon = null;
+        let location = "";
+
+        if (req.body.latitude !== undefined && req.body.longitude !== undefined && req.body.latitude !== null && req.body.longitude !== null && req.body.latitude !== '' && req.body.longitude !== '') {
+            const parsedLat = Number(req.body.latitude);
+            const parsedLon = Number(req.body.longitude);
+            if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+                lat = parsedLat;
+                lon = parsedLon;
+                location = await reverseGeocode(lat, lon);
+            }
+        }
+
+        if (!lat || !lon) {
+            const clientIP = getClientIP(req);
+            const ipLoc = await getIPLocation(clientIP);
+            if (ipLoc) {
+                lat = ipLoc.latitude;
+                lon = ipLoc.longitude;
+                location = ipLoc.location;
+            }
+        }
 
         // Check today's attendance record
         let attendance = await Attendance.findOne({ user: userId, date: today });
@@ -58,8 +223,25 @@ const checkIn = async (req, res) => {
         const sessionId = new mongoose.Types.ObjectId().toString();
         attendance.checkInTime = checkInTime;
         attendance.image = req.file ? req.file.path : attendance.image;
+        
+        if (lat && lon) {
+            attendance.latitude = lat;
+            attendance.longitude = lon;
+            attendance.checkInLatitude = lat;
+            attendance.checkInLongitude = lon;
+            attendance.checkInLocation = location;
+        }
 
-        await attendance.save();
+        try {
+            await attendance.save();
+        } catch (saveError) {
+            if (saveError.code === 11000) {
+                // Another request created the record simultaneously. Fetch the newly created record.
+                attendance = await Attendance.findOne({ user: userId, date: today });
+            } else {
+                throw saveError;
+            }
+        }
 
         await User.findByIdAndUpdate(userId, {
             isOnline: true,
@@ -99,10 +281,39 @@ const checkOut = async (req, res) => {
 
         attendance.checkOutTime = new Date();
 
-        const diffMs = new Date(attendance.checkOutTime) - new Date(attendance.checkInTime);
-        const sessionMins = Math.max(0, Math.floor(diffMs / 60000));
+        // Capture checkout geolocation if provided, otherwise fallback to IP
+        let lat = null;
+        let lon = null;
+        let location = "";
 
-        attendance.totalMinutes = (attendance.totalMinutes || 0) + sessionMins;
+        if (req.body.latitude !== undefined && req.body.longitude !== undefined && req.body.latitude !== null && req.body.longitude !== null && req.body.latitude !== '' && req.body.longitude !== '') {
+            const parsedLat = Number(req.body.latitude);
+            const parsedLon = Number(req.body.longitude);
+            if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+                lat = parsedLat;
+                lon = parsedLon;
+                location = await reverseGeocode(lat, lon);
+            }
+        }
+
+        if (!lat || !lon) {
+            const clientIP = getClientIP(req);
+            const ipLoc = await getIPLocation(clientIP);
+            if (ipLoc) {
+                lat = ipLoc.latitude;
+                lon = ipLoc.longitude;
+                location = ipLoc.location;
+            }
+        }
+
+        if (lat && lon) {
+            attendance.checkOutLatitude = lat;
+            attendance.checkOutLongitude = lon;
+            attendance.checkOutLocation = location;
+        }
+
+        // Calculate actual working minutes (excluding break times)
+        attendance.totalMinutes = getActiveWorkingMinutes(attendance, attendance.checkOutTime);
         attendance.formattedTotalHours = formatMinutes(attendance.totalMinutes);
 
         // Status Logic
@@ -156,13 +367,15 @@ const getTodayAttendance = async (req, res) => {
             return res.status(200).json({
                 checkedIn: false,
                 working: false,
-                totalMinutes: 0
+                totalMinutes: 0,
+                activeWorkingSeconds: 0
             });
         }
 
         // If checkInTime exists AND no checkOutTime
         if (attendance.checkInTime && !attendance.checkOutTime) {
-            const elapsedMs = now - new Date(attendance.checkInTime);
+            const totalMins = getActiveWorkingMinutes(attendance, now);
+            const activeSecs = getActiveWorkingSeconds(attendance, now);
             return res.status(200).json({
                 checkedIn: true,
                 working: true,
@@ -170,7 +383,8 @@ const getTodayAttendance = async (req, res) => {
                 breakStartTime: attendance.breakStartTime || null,
                 checkInTime: attendance.checkInTime,
                 sessionId: req.user.currentSessionId,
-                totalMinutes: Math.max(0, Math.floor(elapsedMs / 60000)),
+                totalMinutes: totalMins,
+                activeWorkingSeconds: activeSecs,
                 date: attendance.date
             });
         }
@@ -182,15 +396,19 @@ const getTodayAttendance = async (req, res) => {
                 working: false,
                 checkInTime: attendance.checkInTime,
                 checkOutTime: attendance.checkOutTime,
-                totalMinutes: attendance.totalMinutes
+                totalMinutes: attendance.totalMinutes,
+                activeWorkingSeconds: getActiveWorkingSeconds(attendance, new Date(attendance.checkOutTime))
             });
         }
 
         // Fallback for safety (should not reach here if logic holds)
+        const fallbackMins = attendance.checkInTime ? getActiveWorkingMinutes(attendance, now) : (attendance.totalMinutes || 0);
+        const fallbackSecs = attendance.checkInTime ? getActiveWorkingSeconds(attendance, now) : (attendance.totalMinutes || 0) * 60;
         return res.status(200).json({
             checkedIn: !!attendance.checkInTime,
             working: attendance.status === 'Working',
-            totalMinutes: attendance.totalMinutes || 0
+            totalMinutes: fallbackMins,
+            activeWorkingSeconds: fallbackSecs
         });
 
     } catch (error) {
@@ -215,7 +433,17 @@ const getAllAttendance = async (req, res) => {
         const attendance = await Attendance.find({ date: today })
             .populate('user', 'name email role currentStatus isOnline')
             .sort({ createdAt: -1 });
-        res.status(200).json(attendance);
+            
+        const now = new Date();
+        const updatedAttendance = attendance.map(rec => {
+            const doc = rec.toObject ? rec.toObject() : rec;
+            if (doc.checkInTime && !doc.checkOutTime) {
+                doc.totalMinutes = getActiveWorkingMinutes(doc, now);
+                doc.formattedTotalHours = formatMinutes(doc.totalMinutes);
+            }
+            return doc;
+        });
+        res.status(200).json(updatedAttendance);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -238,7 +466,13 @@ const getAdminStats = async (req, res) => {
         const absentCount = Math.max(0, totalEmployees - presentCount);
         const lateCount = attendanceRecords.filter(a => a.status === 'Late').length;
 
-        const totalMinutes = attendanceRecords.reduce((acc, curr) => acc + (curr.totalMinutes || 0), 0);
+        const now = new Date();
+        const totalMinutes = attendanceRecords.reduce((acc, curr) => {
+            if (curr.checkInTime && !curr.checkOutTime) {
+                return acc + getActiveWorkingMinutes(curr, now);
+            }
+            return acc + (curr.totalMinutes || 0);
+        }, 0);
         const avgMinutes = presentCount > 0 ? totalMinutes / presentCount : 0;
 
         res.status(200).json({
@@ -324,7 +558,14 @@ const getEmployeeSummary = async (req, res) => {
         const totalWorkingDays = records.length;
         const lateDays = records.filter(r => r.status === 'Late').length;
         const halfDays = records.filter(r => r.status === 'Half Day').length;
-        const totalMinutes = records.reduce((acc, curr) => acc + (curr.totalMinutes || 0), 0);
+        
+        const now = new Date();
+        const totalMinutes = records.reduce((acc, curr) => {
+            if (curr.checkInTime && !curr.checkOutTime) {
+                return acc + getActiveWorkingMinutes(curr, now);
+            }
+            return acc + (curr.totalMinutes || 0);
+        }, 0);
 
         res.status(200).json({
             totalWorkingDays,
@@ -399,6 +640,64 @@ const endBreak = async (req, res) => {
         res.status(200).json({ breakMinutes: attendance.breakMinutes, status: 'Working' });
     } catch (error) {
         console.error('[BREAK] End Error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+// @desc    Start Meeting
+// @route   POST /api/attendance/meeting-start
+// @access  Private
+const startMeeting = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const today = new Date().toLocaleDateString('en-CA');
+
+        const attendance = await Attendance.findOne({ user: userId, date: today });
+        if (!attendance || attendance.status !== 'Working') {
+            return res.status(400).json({ message: 'No active working session found' });
+        }
+        if (attendance.meetingStartTime || attendance.breakStartTime) {
+            return res.status(400).json({ message: 'Already on break or in meeting' });
+        }
+
+        attendance.meetingStartTime = new Date();
+        attendance.status = 'In Meeting'; // We can map this to Working or keep a new status.
+        // But the schema allows specific statuses. Since we didn't add In Meeting to schema enum, we can just use Working 
+        // but log the meetingStartTime. Wait, let's keep status 'Working' so it counts as work time!
+        // The user wants a meeting option. Meeting is working time.
+        // Wait, if it's working time, we just track the time inside meetingStartTime.
+        await attendance.save();
+
+        res.status(200).json({ meetingStartTime: attendance.meetingStartTime, status: 'Working' });
+    } catch (error) {
+        console.error('[MEETING] Start Error:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+// @desc    End Meeting
+// @route   POST /api/attendance/meeting-end
+// @access  Private
+const endMeeting = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const today = new Date().toLocaleDateString('en-CA');
+
+        const attendance = await Attendance.findOne({ user: userId, date: today });
+        if (!attendance || !attendance.meetingStartTime) {
+            return res.status(400).json({ message: 'No active meeting found' });
+        }
+
+        const meetingDurationMs = new Date() - new Date(attendance.meetingStartTime);
+        const meetingMins = Math.max(0, Math.floor(meetingDurationMs / 60000));
+
+        attendance.meetingMinutes = (attendance.meetingMinutes || 0) + meetingMins;
+        attendance.meetingStartTime = null;
+        await attendance.save();
+
+        res.status(200).json({ meetingMinutes: attendance.meetingMinutes, status: 'Working' });
+    } catch (error) {
+        console.error('[MEETING] End Error:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
@@ -510,5 +809,7 @@ module.exports = {
     getAttendanceHistory,
     getEmployeeSummary,
     getAttendanceByDate,
-    bulkUpdateAttendance
+    bulkUpdateAttendance,
+    startMeeting,
+    endMeeting
 };

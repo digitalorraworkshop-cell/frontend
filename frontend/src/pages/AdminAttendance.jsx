@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Clock, Search, RefreshCw, Calendar, User as UserIcon, Loader2, History, Save, CheckCircle2 } from 'lucide-react';
+import { Clock, Search, RefreshCw, Calendar, User as UserIcon, Loader2, History, Save, CheckCircle2, MapPin } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AttendanceHistoryModal from '../components/admin/AttendanceHistoryModal';
 import ManageAttendanceRow from '../components/admin/ManageAttendanceRow';
@@ -10,6 +10,18 @@ const formatMins = (minutes) => {
     const h = Math.floor(minutes / 60);
     const m = Math.floor(minutes % 60);
     return `${h}h ${m}m`;
+};
+
+const formatShortLocation = (lat, lon, address) => {
+    if (address) {
+        const parts = address.split(',').map(p => p.trim());
+        const filtered = parts.filter(p => !/^\d{5,6}$/.test(p) && p.toLowerCase() !== 'india');
+        return filtered.slice(0, 2).join(', ');
+    }
+    if (lat && lon) {
+        return `${Number(lat).toFixed(3)}, ${Number(lon).toFixed(3)}`;
+    }
+    return '';
 };
 
 const AdminAttendance = () => {
@@ -178,6 +190,7 @@ const AdminAttendance = () => {
                                     <th className="px-8 py-6">Work Duration</th>
                                     <th className="px-8 py-6">Break Time</th>
                                     <th className="px-8 py-6">Status</th>
+                                    <th className="px-8 py-6 text-center">Location</th>
                                     <th className="px-8 py-6 text-center">History</th>
                                 </tr>
                             </thead>
@@ -216,6 +229,63 @@ const AdminAttendance = () => {
                                                 {record.status}
                                             </span>
                                         </td>
+                                        <td className="px-8 py-5">
+                                            <div className="flex flex-col items-center gap-1.5">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {/* Check In Location */}
+                                                    {(record.checkInLatitude || record.latitude) ? (
+                                                        <div className="relative group/loc inline-block">
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${record.checkInLatitude || record.latitude},${record.checkInLongitude || record.longitude}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-2 bg-emerald-50 text-emerald-600 rounded-xl transition-all hover:bg-emerald-100 flex items-center justify-center w-8.5 h-8.5"
+                                                                title="View Check-in Location"
+                                                            >
+                                                                <MapPin size={15} />
+                                                            </a>
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900 text-white text-[10px] p-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/loc:opacity-100 transition-opacity z-50 text-center font-medium leading-normal">
+                                                                <span className="font-black text-emerald-400 block mb-0.5">CHECK-IN LOCATION:</span>
+                                                                {record.checkInLocation || `Coordinates: ${(record.checkInLatitude || record.latitude).toFixed(4)}, ${(record.checkInLongitude || record.longitude).toFixed(4)}`}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-200" title="Check-in location not captured"><MapPin size={15} /></span>
+                                                    )}
+
+                                                    {/* Check Out Location */}
+                                                    {record.checkOutLatitude ? (
+                                                        <div className="relative group/loc inline-block">
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${record.checkOutLatitude},${record.checkOutLongitude}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-2 bg-rose-50 text-rose-600 rounded-xl transition-all hover:bg-rose-100 flex items-center justify-center w-8.5 h-8.5"
+                                                                title="View Check-out Location"
+                                                            >
+                                                                <MapPin size={15} className="rotate-180" />
+                                                            </a>
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-900 text-white text-[10px] p-2.5 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/loc:opacity-100 transition-opacity z-50 text-center font-medium leading-normal">
+                                                                <span className="font-black text-rose-400 block mb-0.5">CHECK-OUT LOCATION:</span>
+                                                                {record.checkOutLocation || `Coordinates: ${record.checkOutLatitude.toFixed(4)}, ${record.checkOutLongitude.toFixed(4)}`}
+                                                            </div>
+                                                        </div>
+                                                    ) : record.checkOutTime ? (
+                                                        <span className="text-slate-200" title="Check-out location not captured"><MapPin size={15} className="rotate-180" /></span>
+                                                    ) : null}
+                                                </div>
+
+                                                {/* Short Address Display */}
+                                                <div className="text-[10px] text-slate-400 font-semibold max-w-[150px] truncate text-center" title={record.checkInLocation || ""}>
+                                                    {formatShortLocation(record.checkInLatitude || record.latitude, record.checkInLongitude || record.longitude, record.checkInLocation) || '---'}
+                                                    {record.checkOutLatitude && (
+                                                        <span className="block text-[8px] text-slate-300 font-bold uppercase mt-0.5">
+                                                            Out: {formatShortLocation(record.checkOutLatitude, record.checkOutLongitude, record.checkOutLocation)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td className="px-8 py-5 text-center">
                                             <button
                                                 onClick={() => { setSelectedEmployee(record.user); setIsHistoryOpen(true); }}
@@ -241,6 +311,7 @@ const AdminAttendance = () => {
                                     <th className="px-6 py-6">Check In</th>
                                     <th className="px-6 py-6">Check Out</th>
                                     <th className="px-6 py-6">Break (Mins)</th>
+                                    <th className="px-6 py-6">Work Hours</th>
                                     <th className="px-6 py-6">Status</th>
                                     <th className="px-6 py-6 w-48">Remarks</th>
                                 </tr>

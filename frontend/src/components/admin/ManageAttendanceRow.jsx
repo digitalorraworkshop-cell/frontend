@@ -25,6 +25,23 @@ const ManageAttendanceRow = ({ record, onUpdate }) => {
         });
     }, [attendance]);
 
+    const calculateWorkingHours = () => {
+        if (!localAttendance.checkInTime || !localAttendance.checkOutTime) return '0h 0m';
+        const [inH, inM] = localAttendance.checkInTime.split(':').map(Number);
+        const [outH, outM] = localAttendance.checkOutTime.split(':').map(Number);
+        
+        let start = inH * 60 + inM;
+        let end = outH * 60 + outM;
+        if (end < start) end += 24 * 60; // handle overnight slightly
+        
+        let totalMins = end - start - (Number(localAttendance.breakMinutes) || 0) - (Number(localAttendance.meetingMinutes) || 0);
+        if (totalMins < 0) totalMins = 0;
+        
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        return `${h}h ${m}m`;
+    };
+
     const handleChange = (field, value) => {
         const updated = { ...localAttendance, [field]: value };
 
@@ -95,6 +112,9 @@ const ManageAttendanceRow = ({ record, onUpdate }) => {
                     onChange={(e) => handleChange('breakMinutes', e.target.value)}
                     className="w-20 bg-slate-50 border-none rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-30"
                 />
+            </td>
+            <td className="px-6 py-4 text-center">
+                <span className="text-sm font-black text-slate-900">{calculateWorkingHours()}</span>
             </td>
             <td className="px-6 py-4">
                 <select

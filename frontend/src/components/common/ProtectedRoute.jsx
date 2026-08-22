@@ -27,13 +27,13 @@ const ProtectedRoute = ({ children, role }) => {
 
     // Not logged in? Go to login.
     if (!user) {
-        console.warn('[ProtectedRoute] Not logged in. Redirecting to /login');
+        console.log('[ProtectedRoute] Not logged in. Redirecting to /login');
         return <Navigate to="/login" replace />;
     }
 
     // Role Check
     if (role && !requiredRoles.includes(userRole)) {
-        console.warn(`[ProtectedRoute] Role mismatch: ${userRole} not in ${requiredRoles}. Redirecting to safety.`);
+        console.log(`[ProtectedRoute] Role mismatch: ${userRole} not in ${requiredRoles}. Redirecting to safety.`);
 
         // Smart Redirect to their own dashboard
         if (userRole === 'admin' || userRole === 'seo-manager' || userRole === 'assets-manager' || userRole === 'manager') return <Navigate to="/admin" replace />;

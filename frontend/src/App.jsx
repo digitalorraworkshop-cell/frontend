@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import AdminLayout from './components/layout/AdminLayout';
-import AdminHome from './pages/AdminHome';
+import AdminDashboard from './pages/AdminDashboard';
 import EmployeeList from './pages/EmployeeList';
 import EmployeeCredentials from './pages/EmployeeCredentials';
 import EmployeeLayout from './components/layout/EmployeeLayout';
@@ -27,6 +27,7 @@ import DesktopChatWidget from './pages/DesktopChatWidget';
 import EmployeeBirthdays from './pages/EmployeeBirthdays';
 import AdminBirthdays from './pages/AdminBirthdays';
 import AdminAssetManagement from './pages/AdminAssetManagement';
+import Meetings from './pages/Meetings';
 import toast from 'react-hot-toast';
 
 function App() {
@@ -41,11 +42,9 @@ function App() {
       });
 
       window.electron.on('play-alert-sound', () => {
-        // High-pitched alert beep (base64)
         const beep = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YV9vT18A";
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.play().catch(() => {
-          // Fallback to system-like beep if remote fails or blocked
           const altAudio = new Audio(beep);
           altAudio.play().catch(e => console.error("Audio failed:", e));
         });
@@ -66,8 +65,9 @@ function App() {
               <AdminLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<AdminHome />} />
+            <Route index element={<AdminDashboard />} />
             <Route path="employees" element={<EmployeeList />} />
+            <Route path="meetings" element={<Meetings />} />
             <Route path="leaves" element={<AdminLeaves />} />
             <Route path="tasks" element={<AdminTasks />} />
             <Route path="activity-monitoring" element={<AdminActivityMonitoring />} />
@@ -88,6 +88,7 @@ function App() {
           }>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<EmployeeHome />} />
+            <Route path="meetings" element={<Meetings />} />
             <Route path="tasks" element={<EmployeeTasks />} />
             <Route path="todo" element={<EmployeeTodo />} />
             <Route path="attendance" element={<EmployeeAttendance />} />

@@ -63,6 +63,46 @@ const AdminLeaves = () => {
         }
     };
 
+    const handleExportCSV = () => {
+        if (!leaves || leaves.length === 0) {
+            toast.error("No data to export");
+            return;
+        }
+
+        const headers = ["Employee Name", "Position", "Leave Type", "Emergency", "From Date", "To Date", "Total Days", "Deduction", "Status"];
+        const csvRows = [headers.join(",")];
+
+        leaves.forEach(leave => {
+            const name = leave.user?.name || "Unknown";
+            const position = leave.user?.position || "Internal Staff";
+            const fromDate = new Date(leave.fromDate).toLocaleDateString('en-GB');
+            const toDate = new Date(leave.toDate).toLocaleDateString('en-GB');
+            
+            const row = [
+                `"${name}"`,
+                `"${position}"`,
+                `"${leave.leaveType}"`,
+                leave.isEmergency ? "Yes" : "No",
+                `"${fromDate}"`,
+                `"${toDate}"`,
+                leave.totalDays,
+                leave.deductionAmount,
+                `"${leave.status}"`
+            ];
+            csvRows.push(row.join(","));
+        });
+
+        const csvString = csvRows.join("\n");
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `leave_report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
             <div className="flex items-end justify-between">
@@ -78,7 +118,7 @@ const AdminLeaves = () => {
                         <Filter size={14} />
                         Filter Logic
                     </button>
-                    <button className="flex items-center gap-2 px-6 py-3 bg-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
+                    <button onClick={handleExportCSV} className="flex items-center gap-2 px-6 py-3 bg-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">
                         Export Report (CSV)
                     </button>
                 </div>

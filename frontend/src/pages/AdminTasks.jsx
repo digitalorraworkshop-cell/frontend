@@ -14,7 +14,8 @@ import {
     Trash2,
     Edit3,
     ArrowUpDown,
-    CheckSquare
+    CheckSquare,
+    MessageSquare
 } from 'lucide-react';
 import { getSocket } from '../utils/socket';
 
@@ -280,7 +281,7 @@ const AdminTasks = () => {
                                                         <div className="relative">
                                                             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                                                 {task.assignedTo?.profilePicture ? (
-                                                                    <img src={`${import.meta.env.VITE_API_URL}${task.assignedTo.profilePicture}`} alt="" className="w-full h-full object-cover" />
+                                                                    <img src={`${task.assignedTo.profilePicture?.startsWith('http') ? task.assignedTo.profilePicture : import.meta.env.VITE_API_URL + task.assignedTo.profilePicture}`} alt="" className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <User size={20} className="text-slate-400" />
                                                                 )}

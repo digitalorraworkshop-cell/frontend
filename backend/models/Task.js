@@ -60,6 +60,18 @@ const taskSchema = mongoose.Schema({
     carriedOver: {
         type: Boolean,
         default: false
+    },
+    timeSpentMinutes: {
+        type: Number,
+        default: 0
+    },
+    isTracking: {
+        type: Boolean,
+        default: false
+    },
+    currentTrackingStartTime: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

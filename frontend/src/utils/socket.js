@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 let socket;
 
 export const initSocket = (token) => {
-    socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001', {
+    socket = io(import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`, {
         auth: { token },
         withCredentials: true,
         transports: ['websocket']
