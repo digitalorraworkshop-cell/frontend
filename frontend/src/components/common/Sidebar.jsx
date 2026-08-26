@@ -43,11 +43,10 @@ const Sidebar = ({ onMobileClose }) => {
         { path: '/admin/attendance', name: 'Attendance', icon: <Clock size={20} /> },
         { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} /> },
         { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} /> },
-        { path: '/admin/activity-monitoring', name: 'Screenshots', icon: <Activity size={20} /> },
-        { path: '/admin/learning-reports', name: 'Learning Logs', icon: <BookOpen size={20} /> },
         { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} /> },
         { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
-        { path: '/admin/assets', name: 'Assets', icon: <ShieldCheck size={20} /> },
+        // Only admin and assets-manager can see Assets
+        { path: '/admin/assets', name: 'Assets', icon: <ShieldCheck size={20} />, allowedRoles: ['admin', 'assets-manager'] },
     ];
 
     const employeeNav = [
@@ -62,7 +61,11 @@ const Sidebar = ({ onMobileClose }) => {
         { path: '/employee/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
     ];
 
-    const navItems = isAdminRole ? adminNav : employeeNav;
+    // Filter nav items based on role permissions
+    const rawNavItems = isAdminRole ? adminNav : employeeNav;
+    const navItems = rawNavItems.filter(item =>
+        !item.allowedRoles || item.allowedRoles.includes(role)
+    );
 
     return (
         <div className="h-full w-64 bg-slate-900 text-white flex flex-col shadow-xl font-sans relative border-r border-slate-800">

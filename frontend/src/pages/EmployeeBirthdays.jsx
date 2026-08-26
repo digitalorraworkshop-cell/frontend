@@ -269,7 +269,7 @@ const EmployeeBirthdays = () => {
                                                     <div className="relative">
                                                         {emp.profilePicture ? (
                                                             <img
-                                                                src={emp.profilePicture?.startsWith('http') ? emp.profilePicture : 'http://localhost:5001' + emp.profilePicture}
+                                                                src={emp.profilePicture?.startsWith('http') ? emp.profilePicture : (import.meta.env.VITE_API_URL || '') + emp.profilePicture}
                                                                 alt={emp.name}
                                                                 className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white/30"
                                                             />
@@ -444,7 +444,7 @@ const EmployeeBirthdays = () => {
                                             <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shadow-sm ring-2 ring-white">
                                                 {wish.sender.profilePicture ? (
                                                     <img
-                                                        src={wish.sender.profilePicture?.startsWith('http') ? wish.sender.profilePicture : 'http://localhost:5001' + wish.sender.profilePicture}
+                                                        src={wish.sender.profilePicture?.startsWith('http') ? wish.sender.profilePicture : (import.meta.env.VITE_API_URL || '') + wish.sender.profilePicture}
                                                         alt={wish.sender.name}
                                                         className="w-full h-full object-cover"
                                                     />

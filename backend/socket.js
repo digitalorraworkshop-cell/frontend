@@ -8,25 +8,37 @@ let io;
 
 const initSocket = (server) => {
     console.log('[SOCKET] Initializing Socket.io...');
-    const allowedOrigins = process.env.NODE_ENV === 'production'
-        ? ['https://frontend-gyz4.onrender.com', 'https://backend-upwl.onrender.com', 'https://therakeshbedi.com', 'https://www.therakeshbedi.com']
-        : [
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
-            'http://localhost:5174',
-            'http://127.0.0.1:5174',
-            'http://localhost:5175',
-            'http://127.0.0.1:5175'
-        ];
+    const customOrigins = (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+        .concat(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [])
+        .map(o => o.trim())
+        .filter(Boolean);
+
+    const defaultOrigins = [
+        'https://frontend-gyz4.onrender.com',
+        'https://backend-upwl.onrender.com',
+        'https://therakeshbedi.com',
+        'https://www.therakeshbedi.com',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:5174',
+        'http://127.0.0.1:5174',
+        'http://localhost:5175',
+        'http://127.0.0.1:5175'
+    ];
+
+    const allowedOrigins = Array.from(new Set([...defaultOrigins, ...customOrigins]));
 
     io = new Server(server, {
         cors: {
             origin: function (origin, callback) {
-                if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+                if (!origin || allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+                    callback(null, true);
+                } else if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin)) {
                     callback(null, true);
                 } else {
+                    console.warn(`[SOCKET-CORS-WARN] Socket origin blocked: ${origin}`);
                     callback(new Error('Not allowed by CORS'));
                 }
             },

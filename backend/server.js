@@ -43,31 +43,41 @@ const { ensureCompanyGroup } = require('./controllers/chatController');
 ensureCompanyGroup();
 
 // Middleware
-const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? ['https://frontend-gyz4.onrender.com', 'https://backend-upwl.onrender.com', 'https://therakeshbedi.com', 'https://www.therakeshbedi.com']
-    : [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174',
-        'http://localhost:5175',
-        'http://127.0.0.1:5175'
-    ];
+const customOrigins = (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+    .concat(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [])
+    .map(o => o.trim())
+    .filter(Boolean);
+
+const defaultOrigins = [
+    'https://frontend-gyz4.onrender.com',
+    'https://backend-upwl.onrender.com',
+    'https://therakeshbedi.com',
+    'https://www.therakeshbedi.com',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:5175'
+];
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...customOrigins]));
 
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            // Allow any local network IP in development mode
-            if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin)) {
-                return callback(null, true);
-            }
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
+        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+            return callback(null, true);
         }
-        return callback(null, true);
+        // Allow local network IP in non-production or matching custom patterns
+        if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin)) {
+            return callback(null, true);
+        }
+        console.warn(`[CORS-WARN] Origin blocked: ${origin}`);
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+        return callback(new Error(msg), false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

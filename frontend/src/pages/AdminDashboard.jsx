@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
+import AuthContext from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
@@ -8,6 +9,13 @@ import ScheduleMeetingModal from '../components/meetings/ScheduleMeetingModal';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
+    const role = user?.role?.toLowerCase() || 'admin';
+    const dashboardTitle = role === 'admin' ? 'Admin Overview'
+        : role === 'manager' ? 'Manager Overview'
+        : role === 'seo-manager' ? 'SEO Manager Overview'
+        : role === 'assets-manager' ? 'Assets Overview'
+        : 'Dashboard';
     const [stats, setStats] = useState({
         totalEmployees: 0,
         workingEmployees: 0,
@@ -175,7 +183,7 @@ const AdminDashboard = () => {
             {/* Top Bar with Schedule Quick Action */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Admin Overview</h1>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">{dashboardTitle}</h1>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">Real-time personnel metrics, live attendance & video meetings</p>
                 </div>
 
