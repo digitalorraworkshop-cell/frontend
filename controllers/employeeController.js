@@ -214,11 +214,8 @@ const resetPassword = async (req, res) => {
 const getEmployees = async (req, res) => {
     try {
         let query = {};
-        if (req.user.role === 'admin' || req.user.role === 'seo-manager') {
-            query.role = { $in: ['employee', 'seo-manager', 'seo-team'] };
-        } else {
-            query.role = 'employee'; // Fallback
-        }
+        // Always fetch all non-admin roles so every employee shows up
+        query.role = { $in: ['employee', 'seo-manager', 'seo-team', 'assets-manager', 'manager'] };
 
         const employees = await User.find(query).select('-password');
 

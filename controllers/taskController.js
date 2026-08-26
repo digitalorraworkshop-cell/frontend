@@ -220,7 +220,7 @@ const startTrackingTask = async (req, res) => {
         const task = await Task.findById(req.params.id);
         if (!task) return res.status(404).json({ message: 'Task not found' });
         
-        const assigneeId = task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString();
+        const assigneeId = task.assignedTo ? (task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString()) : null;
         if (assigneeId !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Not authorized to track this task' });
         }
@@ -243,7 +243,7 @@ const stopTrackingTask = async (req, res) => {
         const task = await Task.findById(req.params.id);
         if (!task) return res.status(404).json({ message: 'Task not found' });
         
-        const assigneeId = task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString();
+        const assigneeId = task.assignedTo ? (task.assignedTo._id ? task.assignedTo._id.toString() : task.assignedTo.toString()) : null;
         if (assigneeId !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Not authorized to track this task' });
         }

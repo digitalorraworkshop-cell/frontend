@@ -36,6 +36,6 @@ router.route('/:id')
     .delete(protect, admin, deleteEmployee);
 
 router.route('/:id/reset-password')
-    .put(protect, admin, resetPassword);
+    .put(protect, isManager, resetPassword);
 
 module.exports = router;

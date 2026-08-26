@@ -452,7 +452,7 @@ const getAllAttendance = async (req, res) => {
 const getAdminStats = async (req, res) => {
     try {
         const today = new Date().toLocaleDateString('en-CA');
-        const staffRoles = ['employee', 'seo-team'];
+        const staffRoles = ['employee', 'seo-team', 'manager', 'seo-manager', 'assets-manager'];
         console.log(`[DASHBOARD-DEBUG] Fetching stats for roles: ${staffRoles}`);
         const [totalEmployees, onlineUserCount, attendanceRecords] = await Promise.all([
             User.countDocuments({ role: { $in: staffRoles } }),
@@ -711,7 +711,7 @@ const getAttendanceByDate = async (req, res) => {
         if (!date) return res.status(400).json({ message: "Date is required" });
 
         // Get all employees (including SEO Team)
-        const employees = await User.find({ role: { $in: ['employee', 'seo-team'] }, isActive: true })
+        const employees = await User.find({ role: { $in: ['employee', 'seo-team', 'manager', 'seo-manager', 'assets-manager'] }, isActive: true })
             .select('name email department position')
             .sort({ name: 1 });
 
