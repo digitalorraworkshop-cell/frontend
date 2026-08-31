@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     ClipboardList,
     Clock,
@@ -21,6 +21,8 @@ const EmployeeTasks = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [tick, setTick] = useState(0); // triggers re-render every second for live timer
+    const tickIntervalRef = useRef(null);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -43,6 +45,19 @@ const EmployeeTasks = () => {
             return () => socket.off('taskUpdate', handleSocketTask);
         }
     }, []);
+
+    // Live timer: update every second when any task is actively tracking
+    useEffect(() => {
+        const hasActiveTimer = tasks.some(t => t.isTracking && t.currentTrackingStartTime);
+        if (hasActiveTimer) {
+            tickIntervalRef.current = setInterval(() => {
+                setTick(prev => prev + 1);
+            }, 1000);
+        } else {
+            clearInterval(tickIntervalRef.current);
+        }
+        return () => clearInterval(tickIntervalRef.current);
+    }, [tasks]);
 
     const fetchTasks = async () => {
         try {
@@ -107,13 +122,18 @@ const EmployeeTasks = () => {
     };
 
     const formatTimeSpent = (minutes, isTracking, startTime) => {
-        let totalMins = minutes || 0;
+        let totalSecs = (minutes || 0) * 60;
         if (isTracking && startTime) {
-            const elapsedMs = new Date() - new Date(startTime);
-            totalMins += Math.floor(elapsedMs / 60000);
+            const elapsedMs = Date.now() - new Date(startTime).getTime();
+            totalSecs += Math.floor(elapsedMs / 1000);
         }
-        const h = Math.floor(totalMins / 60);
-        const m = totalMins % 60;
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        if (isTracking) {
+            // Show HH:MM:SS while timer is running
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
         return `${h}h ${m}m`;
     };
 

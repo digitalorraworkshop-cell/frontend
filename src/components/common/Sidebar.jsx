@@ -38,16 +38,14 @@ const Sidebar = ({ onMobileClose }) => {
 
     const adminNav = [
         { path: '/admin', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-        { path: '/admin/employees', name: 'Employees', icon: <Users size={20} /> },
-        { path: '/admin/meetings', name: 'Meetings', icon: <Video size={20} /> },
-        { path: '/admin/attendance', name: 'Attendance', icon: <Clock size={20} /> },
-        { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} /> },
-        { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} /> },
-        { path: '/admin/activity-monitoring', name: 'Screenshots', icon: <Activity size={20} /> },
-        { path: '/admin/learning-reports', name: 'Learning Logs', icon: <BookOpen size={20} /> },
-        { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} /> },
-        { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
-        { path: '/admin/assets', name: 'Assets', icon: <ShieldCheck size={20} /> },
+        { path: '/admin/assets', name: 'Asset Hub', icon: <ShieldCheck size={20} />, allowedRoles: ['admin', 'assets-manager'] },
+        { path: '/admin/employees', name: 'Employees', icon: <Users size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/meetings', name: 'Meetings', icon: <Video size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager', 'assets-manager'] },
+        { path: '/admin/attendance', name: 'Attendance', icon: <Clock size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager', 'assets-manager'] },
+        { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
     ];
 
     const employeeNav = [
@@ -62,7 +60,11 @@ const Sidebar = ({ onMobileClose }) => {
         { path: '/employee/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
     ];
 
-    const navItems = isAdminRole ? adminNav : employeeNav;
+    // Filter nav items based on role permissions
+    const rawNavItems = isAdminRole ? adminNav : employeeNav;
+    const navItems = rawNavItems.filter(item =>
+        !item.allowedRoles || item.allowedRoles.includes(role)
+    );
 
     return (
         <div className="h-full w-64 bg-slate-900 text-white flex flex-col shadow-xl font-sans relative border-r border-slate-800">
@@ -111,7 +113,7 @@ const Sidebar = ({ onMobileClose }) => {
                 <div className="flex items-center gap-3 mb-3">
                     <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold overflow-hidden shadow-sm">
                         {user?.profilePicture ? (
-                            <img src={`${import.meta.env.VITE_API_URL}${user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
+                            <img src={`${user.profilePicture?.startsWith('http') ? user.profilePicture : import.meta.env.VITE_API_URL + user.profilePicture}`} alt="Avatar" className="h-full w-full object-cover" />
                         ) : (
                             user?.name?.charAt(0) || 'U'
                         )}

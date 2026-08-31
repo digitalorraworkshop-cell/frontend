@@ -298,7 +298,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, onMeetingScheduled, initialData
                                     >
                                         <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
                                             {emp.profilePicture ? (
-                                                <img src={`${import.meta.env.VITE_API_URL}${emp.profilePicture}`} alt="" className="w-full h-full object-cover" />
+                                                <img src={`${emp.profilePicture?.startsWith('http') ? emp.profilePicture : import.meta.env.VITE_API_URL + emp.profilePicture}`} alt="" className="w-full h-full object-cover" />
                                             ) : (
                                                 emp.name?.charAt(0)
                                             )}

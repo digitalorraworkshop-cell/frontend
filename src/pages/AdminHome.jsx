@@ -256,7 +256,7 @@ const AdminHome = () => {
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center font-black text-slate-600 overflow-hidden border border-slate-300">
                                                 {emp.profilePicture ? (
-                                                    <img src={`${import.meta.env.VITE_API_URL}${emp.profilePicture}`} alt="" className="w-full h-full object-cover" />
+                                                    <img src={`${emp.profilePicture?.startsWith('http') ? emp.profilePicture : import.meta.env.VITE_API_URL + emp.profilePicture}`} alt="" className="w-full h-full object-cover" />
                                                 ) : (
                                                     emp.name?.charAt(0)
                                                 )}
