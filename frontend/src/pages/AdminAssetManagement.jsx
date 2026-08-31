@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from '../utils/api';
+import AuthContext from '../context/AuthContext';
 import {
     Plus, Package, Share2, Inbox, History,
     Trash2, Edit2, CheckCircle, AlertCircle,
@@ -9,12 +10,15 @@ import {
 import toast from 'react-hot-toast';
 
 const AdminAssetManagement = () => {
+    const { user } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('entry'); // entry, distribution, stock
     const [products, setProducts] = useState([]);
     const [distributions, setDistributions] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [editingProduct, setEditingProduct] = useState(null);
 
     // Form States
     const [productForm, setProductForm] = useState({
@@ -73,8 +77,14 @@ const AdminAssetManagement = () => {
         e.preventDefault();
         try {
             setSubmitting(true);
-            await axios.post('/assets/products', productForm);
-            toast.success("Product added successfully");
+            if (editingProduct) {
+                await axios.put(`/assets/products/${editingProduct._id}`, productForm);
+                toast.success("Product updated successfully");
+                setEditingProduct(null);
+            } else {
+                await axios.post('/assets/products', productForm);
+                toast.success("Product added successfully");
+            }
             setProductForm({
                 modelName: '',
                 totalQuantity: '',
@@ -84,20 +94,53 @@ const AdminAssetManagement = () => {
             });
             fetchData();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to add product");
+            toast.error(error.response?.data?.message || "Failed to save product");
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleDeleteProduct = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this product record?")) return;
+        try {
+            await axios.delete(`/assets/products/${id}`);
+            toast.success("Product deleted successfully");
+            fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete product");
+        }
+    };
+
+    const startEditProduct = (p) => {
+        setEditingProduct(p);
+        setProductForm({
+            modelName: p.modelName,
+            totalQuantity: p.totalQuantity,
+            price: p.price,
+            condition: p.condition || 'New',
+            purchaseDate: p.purchaseDate ? p.purchaseDate.split('T')[0] : new Date().toISOString().split('T')[0]
+        });
+    };
+
+    const cancelEdit = () => {
+        setEditingProduct(null);
+        setProductForm({
+            modelName: '',
+            totalQuantity: '',
+            price: '',
+            condition: 'New',
+            purchaseDate: new Date().toISOString().split('T')[0]
+        });
     };
 
     const handleDistribute = async (e) => {
         e.preventDefault();
         try {
             setSubmitting(true);
-            const adminName = localStorage.getItem('userName') || 'Admin';
+            const managerName = user?.name || localStorage.getItem('userName') || 'Manoj Sir';
             await axios.post('/assets/distribute', {
                 ...distForm,
-                distributedBy: adminName
+                distributedBy: managerName
             });
             toast.success("Product distributed successfully");
             setDistForm({
@@ -124,6 +167,35 @@ const AdminAssetManagement = () => {
         } catch (error) {
             toast.error("Failed to return item");
         }
+    };
+
+    const handleExportCSV = () => {
+        const availableStock = products.filter(p => p.availableQuantity > 0);
+        if (availableStock.length === 0) {
+            toast.error("No stock available to export");
+            return;
+        }
+
+        const headers = ["Model Name", "Total Quantity", "Distributed", "Available Stock", "Price (INR)", "Condition", "Purchase Date"];
+        const rows = availableStock.map(p => [
+            `"${p.modelName}"`,
+            p.totalQuantity,
+            p.totalQuantity - p.availableQuantity,
+            p.availableQuantity,
+            p.price,
+            p.condition,
+            new Date(p.purchaseDate).toLocaleDateString()
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `extra_stock_report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Stock report downloaded");
     };
 
     const renderEntryTab = () => (
@@ -198,13 +270,24 @@ const AdminAssetManagement = () => {
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 mt-4 shadow-xl shadow-slate-900/10"
-                        >
-                            {submitting ? 'Creating...' : 'Create Product Record'}
-                        </button>
+                        <div className="flex gap-2 mt-4">
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-slate-900/10"
+                            >
+                                {submitting ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product Record'}
+                            </button>
+                            {editingProduct && (
+                                <button
+                                    type="button"
+                                    onClick={cancelEdit}
+                                    className="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                            )}
+                        </div>
                     </form>
                 </div>
             </div>
@@ -212,11 +295,23 @@ const AdminAssetManagement = () => {
             {/* List Column */}
             <div className="lg:col-span-2">
                 <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-xl shadow-slate-200/10 overflow-hidden">
-                    <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-                        <h2 className="text-xl font-black text-slate-900">Product Catalog</h2>
-                        <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            {products.length} Models
-                        </span>
+                    <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/30">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl font-black text-slate-900">Product Catalog</h2>
+                            <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                {products.length} Models
+                            </span>
+                        </div>
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search products..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 pr-4 py-2 text-xs font-bold bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 w-48 sm:w-64"
+                            />
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
@@ -227,21 +322,22 @@ const AdminAssetManagement = () => {
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Price</th>
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Condition</th>
                                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100/50">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="5" className="px-8 py-20 text-center">
+                                        <td colSpan="6" className="px-8 py-20 text-center">
                                             <Loader2 className="w-8 h-8 animate-spin text-brand-500 mx-auto" />
                                         </td>
                                     </tr>
-                                ) : products.length === 0 ? (
+                                ) : products.filter(p => p.modelName.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="px-8 py-20 text-center text-slate-400 font-bold italic">No products added yet</td>
+                                        <td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-bold italic">No matching products found</td>
                                     </tr>
                                 ) : (
-                                    products.map(p => (
+                                    products.filter(p => p.modelName.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
                                         <tr key={p._id} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="px-8 py-4 font-black text-slate-900 text-sm">{p.modelName}</td>
                                             <td className="px-6 py-4 font-bold text-slate-600 text-sm">{p.totalQuantity}</td>
@@ -256,6 +352,24 @@ const AdminAssetManagement = () => {
                                             <td className="px-6 py-4 text-xs font-bold text-slate-400">
                                                 {new Date(p.purchaseDate).toLocaleDateString()}
                                             </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={() => startEditProduct(p)}
+                                                        className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                        title="Edit Product"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteProduct(p._id)}
+                                                        className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                        title="Delete Product"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -263,7 +377,7 @@ const AdminAssetManagement = () => {
                         </table>
                     </div>
                 </div>
-            </div>
+            </div>;
         </div>
     );
 
@@ -436,7 +550,10 @@ const AdminAssetManagement = () => {
                         <p className="text-xs font-bold text-slate-400 mt-0.5">Inventory available for distribution</p>
                     </div>
                 </div>
-                <button className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-black text-slate-600 hover:bg-slate-100 transition-all uppercase tracking-widest shadow-sm">
+                <button 
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-black text-slate-600 hover:bg-slate-100 transition-all uppercase tracking-widest shadow-sm active:scale-95"
+                >
                     <Download size={16} />
                     Export Stock List
                 </button>

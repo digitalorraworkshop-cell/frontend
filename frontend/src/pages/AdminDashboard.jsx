@@ -16,6 +16,9 @@ const AdminDashboard = () => {
         : role === 'seo-manager' ? 'SEO Manager Overview'
         : role === 'assets-manager' ? 'Assets Overview'
         : 'Dashboard';
+    const [assetStats, setAssetStats] = useState(null);
+    const [loadingAssets, setLoadingAssets] = useState(true);
+
     const [stats, setStats] = useState({
         totalEmployees: 0,
         workingEmployees: 0,
@@ -55,6 +58,18 @@ const AdminDashboard = () => {
 
     const fetchDashboardData = async () => {
         try {
+            if (role === 'assets-manager') {
+                setLoadingAssets(true);
+                const [assetRes, meetingsRes] = await Promise.all([
+                    api.get('/assets/stats').catch(() => ({ data: null })),
+                    api.get('/meetings/today-timeline').catch(() => ({ data: [] }))
+                ]);
+                if (assetRes.data) setAssetStats(assetRes.data);
+                setUpcomingMeetings(Array.isArray(meetingsRes.data) ? meetingsRes.data.slice(0, 4) : []);
+                setLoadingAssets(false);
+                return;
+            }
+
             // Fetch stats, recent activity, live status, and upcoming meetings in parallel
             const [statsRes, activityRes, liveRes, meetingsRes] = await Promise.all([
                 api.get('/attendance/stats').catch(() => ({ data: {} })),
@@ -115,6 +130,7 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error("Failed to fetch dashboard stats", error);
             setLoadingActivity(false);
+            setLoadingAssets(false);
         }
     };
 
@@ -180,20 +196,31 @@ const AdminDashboard = () => {
 
     return (
         <div className="p-6 sm:p-8 space-y-8 bg-slate-50 min-h-screen">
-            {/* Top Bar with Schedule Quick Action */}
+            {/* Top Bar with Quick Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight">{dashboardTitle}</h1>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">Real-time personnel metrics, live attendance & video meetings</p>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        {role === 'assets-manager' ? 'Central Hardware Inventory & Distribution Monitoring' : 'Real-time personnel metrics, live attendance & video meetings'}
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setIsScheduleOpen(true)}
-                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-brand-600/20 active:scale-95 transition-all"
-                    >
-                        <Video size={16} /> + Schedule Meeting
-                    </button>
+                    {role === 'assets-manager' ? (
+                        <button
+                            onClick={() => navigate('/admin/assets')}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                        >
+                            Open Asset Hub →
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => setIsScheduleOpen(true)}
+                            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-brand-600/20 active:scale-95 transition-all"
+                        >
+                            <Video size={16} /> + Schedule Meeting
+                        </button>
+                    )}
                     <button
                         onClick={fetchDashboardData}
                         className="p-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl transition-colors"
@@ -204,34 +231,146 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Total Present"
-                    value={stats.todayPresent}
-                    icon={Users}
-                    color="bg-emerald-500 shadow-emerald-500/40"
-                    trend="+12%"
-                />
-                <StatCard
-                    title="Total Absent"
-                    value={stats.todayAbsent}
-                    icon={Activity}
-                    color="bg-rose-500 shadow-rose-500/40"
-                />
-                <StatCard
-                    title="Late Employees"
-                    value={stats.lateEmployees}
-                    icon={AlertCircle}
-                    color="bg-amber-500 shadow-amber-500/40"
-                />
-                <StatCard
-                    title="Avg. Work Hours"
-                    value={stats.avgWorkHours}
-                    icon={Clock}
-                    color="bg-indigo-500 shadow-indigo-500/40"
-                />
-            </div>
+            {/* If Assets Manager Role, render Asset Overview Grid */}
+            {role === 'assets-manager' ? (
+                <div className="space-y-8">
+                    {/* Asset Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard
+                            title="Total Asset Models"
+                            value={assetStats?.totalProducts || 0}
+                            icon={Users}
+                            color="bg-brand-600 shadow-brand-600/30"
+                        />
+                        <StatCard
+                            title="Extra Available Stock"
+                            value={`${assetStats?.availableQuantity || 0} Units`}
+                            icon={Activity}
+                            color="bg-emerald-500 shadow-emerald-500/30"
+                        />
+                        <StatCard
+                            title="Distributed Assets"
+                            value={`${assetStats?.distributedQuantity || 0} Assigned`}
+                            icon={Clock}
+                            color="bg-indigo-500 shadow-indigo-500/30"
+                        />
+                        <StatCard
+                            title="Total Inventory Value"
+                            value={`₹${(assetStats?.totalValuation || 0).toLocaleString()}`}
+                            icon={AlertCircle}
+                            color="bg-amber-500 shadow-amber-500/30"
+                        />
+                    </div>
+
+                    {/* Quick Shortcuts */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div 
+                            onClick={() => navigate('/admin/assets')}
+                            className="p-6 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                        >
+                            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform">
+                                +
+                            </div>
+                            <h3 className="text-base font-black text-slate-900">Product Entry</h3>
+                            <p className="text-xs text-slate-500 mt-1">Register new hardware, laptops & equipment model stock into system.</p>
+                        </div>
+                        <div 
+                            onClick={() => navigate('/admin/assets')}
+                            className="p-6 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                        >
+                            <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform">
+                                →
+                            </div>
+                            <h3 className="text-base font-black text-slate-900">Asset Distribution</h3>
+                            <p className="text-xs text-slate-500 mt-1">Assign company hardware and devices directly to staff members.</p>
+                        </div>
+                        <div 
+                            onClick={() => navigate('/admin/assets')}
+                            className="p-6 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                        >
+                            <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform">
+                                ✓
+                            </div>
+                            <h3 className="text-base font-black text-slate-900">Available Stock</h3>
+                            <p className="text-xs text-slate-500 mt-1">View ready-to-issue items in storage and manage inventory returns.</p>
+                        </div>
+                    </div>
+
+                    {/* Recent Asset Distribution Feed */}
+                    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-black text-slate-900">Recent Distribution Activity</h3>
+                            <button onClick={() => navigate('/admin/assets')} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                                View All Logs →
+                            </button>
+                        </div>
+
+                        {loadingAssets ? (
+                            <p className="text-xs text-slate-400 py-6 text-center">Loading distributions...</p>
+                        ) : !assetStats?.recentDistributions?.length ? (
+                            <p className="text-xs text-slate-400 py-6 text-center">No distribution logs yet.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black">
+                                            <th className="pb-3">Employee</th>
+                                            <th className="pb-3">Product Model</th>
+                                            <th className="pb-3">Quantity</th>
+                                            <th className="pb-3">Date</th>
+                                            <th className="pb-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {assetStats.recentDistributions.map(d => (
+                                            <tr key={d._id} className="hover:bg-slate-50/50 font-bold">
+                                                <td className="py-3 text-slate-900">{d.employee?.name || 'Employee'} ({d.employee?.department || 'Staff'})</td>
+                                                <td className="py-3 text-slate-600">{d.product?.modelName || 'Product'}</td>
+                                                <td className="py-3 text-slate-900">{d.quantityAssigned}</td>
+                                                <td className="py-3 text-slate-400">{new Date(d.distributionDate).toLocaleDateString()}</td>
+                                                <td className="py-3">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${d.status === 'Assigned' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                        {d.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                /* Standard Stats Grid for Admin */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard
+                        title="Total Present"
+                        value={stats.todayPresent}
+                        icon={Users}
+                        color="bg-emerald-500 shadow-emerald-500/40"
+                        trend="+12%"
+                    />
+                    <StatCard
+                        title="Total Absent"
+                        value={stats.todayAbsent}
+                        icon={Activity}
+                        color="bg-rose-500 shadow-rose-500/40"
+                    />
+                    <StatCard
+                        title="Late Employees"
+                        value={stats.lateEmployees}
+                        icon={AlertCircle}
+                        color="bg-amber-500 shadow-amber-500/40"
+                    />
+                    <StatCard
+                        title="Avg. Work Hours"
+                        value={stats.avgWorkHours}
+                        icon={Clock}
+                        color="bg-indigo-500 shadow-indigo-500/40"
+                    />
+                </div>
+            )}
 
             {/* Upcoming Meetings & Google Meet Widget */}
             {upcomingMeetings.length > 0 && (

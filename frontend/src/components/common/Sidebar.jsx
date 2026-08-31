@@ -38,15 +38,14 @@ const Sidebar = ({ onMobileClose }) => {
 
     const adminNav = [
         { path: '/admin', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-        { path: '/admin/employees', name: 'Employees', icon: <Users size={20} /> },
-        { path: '/admin/meetings', name: 'Meetings', icon: <Video size={20} /> },
-        { path: '/admin/attendance', name: 'Attendance', icon: <Clock size={20} /> },
-        { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} /> },
-        { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} /> },
-        { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} /> },
-        { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} /> },
-        // Only admin and assets-manager can see Assets
-        { path: '/admin/assets', name: 'Assets', icon: <ShieldCheck size={20} />, allowedRoles: ['admin', 'assets-manager'] },
+        { path: '/admin/assets', name: 'Asset Hub', icon: <ShieldCheck size={20} />, allowedRoles: ['admin', 'assets-manager'] },
+        { path: '/admin/employees', name: 'Employees', icon: <Users size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/meetings', name: 'Meetings', icon: <Video size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager', 'assets-manager'] },
+        { path: '/admin/attendance', name: 'Attendance', icon: <Clock size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/leaves', name: 'Leaves', icon: <FileText size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/tasks', name: 'Tasks', icon: <ClipboardList size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
+        { path: '/admin/chat', name: 'Team Chat', icon: <MessageSquare size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager', 'assets-manager'] },
+        { path: '/admin/birthdays', name: 'Birthdays', icon: <Cake size={20} />, allowedRoles: ['admin', 'manager', 'seo-manager'] },
     ];
 
     const employeeNav = [
